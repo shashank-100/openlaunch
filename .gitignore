@@ -1,0 +1,23 @@
+# Environment files (contains secrets - never commit)
+.env
+.env.local
+backend/.env
+openclaw-daemon/.env
+frontend/.env
+frontend/.env.local
+
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build outputs
+dist/
+*/dist/
+.next/
+*/.next/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store

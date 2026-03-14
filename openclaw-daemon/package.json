@@ -1,0 +1,28 @@
+{
+  "name": "intake-openclaw-daemon",
+  "version": "1.0.0",
+  "description": "OpenClaw persistent daemon for web research",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "axios": "^1.6.5",
+    "bullmq": "^5.1.0",
+    "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.3.1",
+    "openai": "^6.27.0",
+    "playwright": "^1.40.1",
+    "proxy-chain": "^2.4.0",
+    "redis": "^4.6.12",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
