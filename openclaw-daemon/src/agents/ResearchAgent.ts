@@ -158,12 +158,12 @@ export class ResearchAgent {
    * Generate brief using OpenAI GPT-5.1-codex-mini
    */
   async generateBrief(results: ResearchResults): Promise<any> {
-    console.log('  🤖 Generating brief with GPT-5.1-codex-mini...');
+    console.log('  🤖 Generating brief with gpt-5-mini...');
 
     const prompt = this.buildBriefPrompt(results);
 
     const completion = await this.openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-5.1-codex-mini',
+      model: process.env.OPENAI_MODEL || 'gpt-5-mini',
       max_tokens: 4096,
       messages: [
         {
