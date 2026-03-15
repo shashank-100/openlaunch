@@ -130,7 +130,7 @@ async function processResearchJob(job: any) {
 
     // Save detected signals to signals table
     if (results.signals.length > 0) {
-      await supabase.from('signals').insert(
+      const { error: signalsError } = await supabase.from('signals').insert(
         results.signals.map((s: any) => ({
           brief_id: briefRecord.id,
           job_id: jobId,
@@ -143,6 +143,11 @@ async function processResearchJob(job: any) {
           metadata: s.metadata || null,
         }))
       );
+      if (signalsError) {
+        console.error('⚠️  Failed to save signals:', signalsError.message);
+      } else {
+        console.log(`  💾 Saved ${results.signals.length} signals to DB`);
+      }
     }
 
     // Update job status

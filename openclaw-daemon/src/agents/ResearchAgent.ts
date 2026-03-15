@@ -327,7 +327,6 @@ Generate the brief now in clean markdown format.`;
       console.error('Failed to log agent action:', error);
     }
   }
-}
 
   /**
    * Generate buyer asset — a personalized one-pager FOR the buyer, sent post-call
@@ -391,3 +390,4 @@ Generate the buyer asset now.`;
       markdown: completion.choices[0]?.message?.content || '',
     };
   }
+}
