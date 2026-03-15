@@ -4,6 +4,9 @@ import { supabase, researchQueue } from '../index';
 
 const router = Router();
 
+// Registry of active polling intervals — prevents duplicate loops on reconnect
+const calendarIntervals = new Map<string, NodeJS.Timeout>();
+
 /**
  * GET /api/calendar/connect/google
  * Initiate Google Calendar OAuth flow
@@ -217,18 +220,79 @@ async function getUpcomingMeetings(connection: any): Promise<any[]> {
  * Start watching calendar for new events
  */
 async function startCalendarWatch(userId: string): Promise<void> {
-  // This would set up a webhook to receive calendar events in real-time
-  // For MVP, we'll use periodic polling instead
-  console.log(`📅 Calendar watch started for user ${userId}`);
+  // Clear any existing interval for this user before starting a new one
+  const existing = calendarIntervals.get(userId);
+  if (existing) {
+    clearInterval(existing);
+    console.log(`📅 Restarting calendar polling for user ${userId}`);
+  } else {
+    console.log(`📅 Calendar polling started for user ${userId}`);
+  }
+
+  // Poll immediately, then every 5 minutes
+  await pollCalendarForUser(userId);
+  const interval = setInterval(() => pollCalendarForUser(userId), 5 * 60 * 1000);
+  calendarIntervals.set(userId, interval);
+}
+
+async function pollCalendarForUser(userId: string): Promise<void> {
+  try {
+    const { data: connection } = await supabase
+      .from('calendar_connections')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!connection) return;
+
+    const meetings = await getUpcomingMeetings(connection);
+    const now = new Date();
+    const window = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    for (const meeting of meetings) {
+      const meetingTime = new Date(meeting.startTime);
+      if (meetingTime <= now || meetingTime > window) continue;
+
+      const externalAttendee = meeting.attendees.find((a: any) => !isInternalEmail(a.email));
+      if (!externalAttendee) continue;
+
+      const { data: existing } = await supabase
+        .from('research_jobs')
+        .select('id')
+        .eq('meeting_id', meeting.id)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (existing) continue;
+
+      const companyName = extractCompanyFromEmail(externalAttendee.email);
+      const contactName = externalAttendee.name || externalAttendee.email.split('@')[0];
+
+      await researchQueue.add('research', {
+        companyName,
+        contactName,
+        contactEmail: externalAttendee.email,
+        meetingTime: meetingTime.toISOString(),
+        userId,
+        organizationId: '00000000-0000-0000-0000-000000000002',
+        meetingId: meeting.id,
+        priority: 8,
+      });
+
+      console.log(`📅 Auto-queued: ${companyName} / ${contactName} for ${meetingTime.toLocaleString()}`);
+    }
+  } catch (error: any) {
+    console.error(`Calendar poll failed for ${userId}:`, error.message);
+  }
 }
 
 /**
  * Helper: Check if email is internal
+ * Currently skipped — all meetings trigger research, user filters manually
  */
-function isInternalEmail(email: string): boolean {
-  // In production, check against company domain
-  const internalDomains = ['@yourcompany.com', '@geodo.ai'];
-  return internalDomains.some(domain => email.endsWith(domain));
+function isInternalEmail(_email: string): boolean {
+  return false;
 }
 
 /**

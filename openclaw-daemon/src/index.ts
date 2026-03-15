@@ -200,16 +200,29 @@ async function startWorker() {
   await initializeBrowser();
 
   // Create worker
+  // Parse Redis connection — handles redis://, rediss://, and authenticated URLs
+  function parseRedisConnection(url?: string) {
+    if (!url) return { host: 'localhost', port: 6379 };
+    try {
+      const parsed = new URL(url);
+      return {
+        host: parsed.hostname,
+        port: parseInt(parsed.port || '6379'),
+        ...(parsed.password && { password: parsed.password }),
+        ...(parsed.protocol === 'rediss:' && { tls: {} }),
+      };
+    } catch {
+      return { host: 'localhost', port: 6379 };
+    }
+  }
+
   const worker = new Worker(
     'research-jobs',
     async (job) => {
       return await processResearchJob(job);
     },
     {
-      connection: {
-        host: process.env.REDIS_URL?.split('://')[1]?.split(':')[0] || 'localhost',
-        port: parseInt(process.env.REDIS_URL?.split(':')[2] || '6379'),
-      },
+      connection: parseRedisConnection(process.env.REDIS_URL),
       concurrency: 3, // Process up to 3 jobs concurrently
       limiter: {
         max: 10,

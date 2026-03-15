@@ -19,12 +19,25 @@ export const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY!
 );
 
+// Parse Redis connection — handles redis://, rediss://, and authenticated URLs
+function parseRedisConnection(url?: string) {
+  if (!url) return { host: 'localhost', port: 6379 };
+  try {
+    const parsed = new URL(url);
+    return {
+      host: parsed.hostname,
+      port: parseInt(parsed.port || '6379'),
+      ...(parsed.password && { password: parsed.password }),
+      ...(parsed.protocol === 'rediss:' && { tls: {} }),
+    };
+  } catch {
+    return { host: 'localhost', port: 6379 };
+  }
+}
+
 // Initialize Redis job queue
 export const researchQueue = new Queue('research-jobs', {
-  connection: {
-    host: process.env.REDIS_URL?.split('://')[1]?.split(':')[0] || 'localhost',
-    port: parseInt(process.env.REDIS_URL?.split(':')[2] || '6379'),
-  },
+  connection: parseRedisConnection(process.env.REDIS_URL),
 });
 
 // Middleware

@@ -328,3 +328,66 @@ Generate the brief now in clean markdown format.`;
     }
   }
 }
+
+  /**
+   * Generate buyer asset — a personalized one-pager FOR the buyer, sent post-call
+   * This is the differentiated move: every other tool serves the seller.
+   * Intake also serves the buyer with their own ROI case.
+   */
+  async generateBuyerAsset(
+    results: ResearchResults,
+    meetingNotes: string = ''
+  ): Promise<any> {
+    console.log('  🎁 Generating buyer asset...');
+
+    const prompt = `You are a world-class solution engineer. A sales call just ended. 
+Your job is to create a personalized one-pager FOR THE BUYER — not for the seller.
+This is what the buyer will share internally to get buy-in.
+
+**Company researched:** 
+${JSON.stringify(results.extractedData, null, 2).substring(0, 3000)}
+
+**Meeting notes (if any):**
+${meetingNotes || 'No notes provided.'}
+
+Create a buyer-facing one-pager with exactly these sections:
+
+## Why This Matters To You
+- 2-3 bullets specific to their company's situation
+- Reference their actual signals (hiring, funding, tech gaps)
+- Connect to their stated priorities
+
+## What You Get
+- Concrete outcomes, not features
+- Specific to their use case
+- Numbers where possible ("save X hours", "close Y% faster")
+
+## Your ROI Case
+- Simple math they can take to their CFO
+- Conservative estimate
+- Payback period
+
+## Next Steps
+- Clear, time-boxed actions
+- Who owns what
+- Decision criteria
+
+**Rules:**
+- Write as if Intake is presenting to their team (not your team)
+- Use "you/your" not "we/our" 
+- No sales language — this is a decision-support document
+- Be specific to their company, not generic
+- 1 page max
+
+Generate the buyer asset now.`;
+
+    const completion = await this.openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-5-mini',
+      max_completion_tokens: 2048,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    return {
+      markdown: completion.choices[0]?.message?.content || '',
+    };
+  }

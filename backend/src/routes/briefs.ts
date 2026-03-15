@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import axios from 'axios';
 import { supabase } from '../index';
 
 const router = Router();
@@ -122,6 +123,92 @@ router.post('/:briefId/rate', async (req, res) => {
   } catch (error) {
     console.error('Rate brief error:', error);
     res.status(500).json({ error: 'Failed to rate brief' });
+  }
+});
+
+/**
+ * POST /api/briefs/:briefId/buyer-asset
+ * Generate a buyer-facing one-pager from the brief
+ */
+router.post('/:briefId/buyer-asset', async (req, res) => {
+  try {
+    const { briefId } = req.params;
+    const { meetingNotes } = req.body;
+
+    const { data: brief, error } = await supabase
+      .from('briefs')
+      .select('company_name, contact_name, full_brief_markdown')
+      .eq('id', briefId)
+      .single();
+
+    if (error || !brief) {
+      return res.status(404).json({ error: 'Brief not found' });
+    }
+
+    const prompt = `You are a world-class solution engineer. A sales call just ended.
+Your job is to create a personalized one-pager FOR THE BUYER — not for the seller.
+This is what the buyer will share internally to get buy-in.
+
+**Company researched:** ${brief.company_name}
+**Contact:** ${brief.contact_name || 'Unknown'}
+
+**Research brief:**
+${(brief.full_brief_markdown || '').substring(0, 3000)}
+
+**Meeting notes (if any):**
+${meetingNotes || 'No notes provided.'}
+
+Create a buyer-facing one-pager with exactly these sections:
+
+## Why This Matters To You
+- 2-3 bullets specific to their company's situation
+- Reference their actual signals (hiring, funding, tech gaps)
+- Connect to their stated priorities
+
+## What You Get
+- Concrete outcomes, not features
+- Specific to their use case
+- Numbers where possible ("save X hours", "close Y% faster")
+
+## Your ROI Case
+- Simple math they can take to their CFO
+- Conservative estimate
+- Payback period
+
+## Next Steps
+- Clear, time-boxed actions
+- Who owns what
+- Decision criteria
+
+**Rules:**
+- Write as if Intake is presenting to their team (not your team)
+- Use "you/your" not "we/our"
+- No sales language — this is a decision-support document
+- Be specific to their company, not generic
+- 1 page max
+
+Generate the buyer asset now.`;
+
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        max_completion_tokens: 2048,
+        messages: [{ role: 'user', content: prompt }],
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const markdown = response.data.choices[0]?.message?.content || '';
+    res.json({ success: true, markdown });
+  } catch (error) {
+    console.error('Buyer asset error:', error);
+    res.status(500).json({ error: 'Failed to generate buyer asset' });
   }
 });
 
