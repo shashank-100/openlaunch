@@ -1,10 +1,9 @@
-# Playwright official image — includes Chromium + all system deps
 FROM mcr.microsoft.com/playwright:v1.40.0-focal
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --only=production=false
+RUN npm ci
 
 COPY tsconfig.json ./
 COPY src ./src
