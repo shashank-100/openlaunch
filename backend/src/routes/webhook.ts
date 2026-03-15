@@ -94,6 +94,7 @@ router.get('/job/:jobId', async (req, res) => {
         state,
         progress,
         data: job.data,
+        returnvalue: job.returnvalue,
         finishedOn: job.finishedOn,
         processedOn: job.processedOn,
         failedReason: job.failedReason,

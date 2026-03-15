@@ -16,137 +16,137 @@ export async function detectSignals(extractedData: Record<string, any>): Promise
   const signals: Signal[] = [];
 
   // 1. Hiring surge signal
-  if (extractedData['LinkedIn Jobs']?.openRoles) {
-    const roleCount = extractedData['LinkedIn Jobs'].openRoles.length;
-    if (roleCount > 10) {
+  const jobs = extractedData['LinkedIn Jobs'];
+  if (jobs?.openRoles) {
+    const roleCount = jobs.openRoles.length;
+    if (roleCount > 5) {
       signals.push({
         type: 'hiring_surge',
-        title: 'Active Hiring Across Multiple Departments',
-        description: `Company has ${roleCount} open positions - indicates growth and budget availability`,
+        title: 'Active Hiring',
+        description: `${roleCount} open positions found — growth signal`,
         importanceScore: 8,
-        metadata: { roleCount },
+        metadata: { roleCount, roles: jobs.openRoles.slice(0, 5) },
       });
     }
 
-    // Engineering hiring signal
-    const engineeringRoles = extractedData['LinkedIn Jobs'].openRoles.filter((role: string) =>
-      /engineer|developer|software|technical/i.test(role)
+    const engRoles = jobs.engineeringRoles || jobs.openRoles.filter((r: string) =>
+      /engineer|developer|software|infrastructure|backend|frontend|ml|ai/i.test(r)
     );
-    if (engineeringRoles.length > 3) {
+    if (engRoles.length > 2) {
       signals.push({
-        type: 'engineering_hiring',
-        title: 'Engineering Team Expansion',
-        description: `${engineeringRoles.length} engineering roles open - they're building something new`,
+        type: 'engineering_expansion',
+        title: 'Engineering Team Growing',
+        description: `${engRoles.length} engineering roles open — building new capabilities`,
         importanceScore: 7,
-        metadata: { engineeringRoles },
+        metadata: { roles: engRoles },
+      });
+    }
+
+    const leaderRoles = jobs.leadershipRoles || jobs.openRoles.filter((r: string) =>
+      /vp|director|head of|chief|manager|lead/i.test(r)
+    );
+    if (leaderRoles.length > 0) {
+      signals.push({
+        type: 'leadership_hiring',
+        title: 'Hiring Senior Leaders',
+        description: `Recruiting for: ${leaderRoles.slice(0, 3).join(', ')}`,
+        importanceScore: 8,
+        metadata: { roles: leaderRoles },
       });
     }
   }
 
-  // 2. Recent funding signal
-  if (extractedData['Crunchbase']?.fundingRaised) {
-    const fundingText = extractedData['Crunchbase'].fundingRaised;
-    if (fundingText && /raised/i.test(fundingText)) {
+  // 2. Funding signal from Google search
+  const funding = extractedData['Funding & Company Info'];
+  if (funding?.fundingInfo) {
+    const fundingText: string = funding.fundingInfo;
+    const fundingMatch = fundingText.match(/\$[\d,.]+\s*(million|billion|M|B)/i);
+    const seriesMatch = fundingText.match(/series\s+[a-z]/i);
+    const raisedMatch = fundingText.match(/raised/i);
+
+    if (fundingMatch || seriesMatch) {
       signals.push({
         type: 'recent_funding',
-        title: 'Recent Funding Round',
-        description: fundingText,
+        title: 'Funding Activity Detected',
+        description: [fundingMatch?.[0], seriesMatch?.[0]].filter(Boolean).join(' — ') ||
+          'Funding round mentioned in search results',
         importanceScore: 9,
-        sourceUrl: extractedData['Crunchbase'].crunchbaseUrl,
+        metadata: { context: fundingText.substring(0, 300) },
+      });
+    } else if (raisedMatch) {
+      signals.push({
+        type: 'funding_mention',
+        title: 'Funding Mentioned',
+        description: 'Funding activity found in company search results',
+        importanceScore: 6,
+        metadata: { context: fundingText.substring(0, 300) },
       });
     }
   }
 
-  // 3. New leadership signal (from news)
-  if (extractedData['Google News']?.recentNews) {
-    const newsItems = extractedData['Google News'].recentNews;
-    const leadershipNews = newsItems.filter((item: string) =>
-      /hire|appoint|ceo|cto|cro|vp|executive|join/i.test(item)
-    );
+  // 3. News signals — Google News now returns { title, source, time }[]
+  const news = extractedData['Google News'];
+  if (news?.recentNews?.length > 0) {
+    const newsItems: { title: string; source: string; time: string }[] = news.recentNews;
+    const titles = newsItems.map((n) => (typeof n === 'string' ? n : n.title));
 
+    const leadershipNews = titles.filter((t) =>
+      /hire|appoint|ceo|cto|cro|vp|executive|joins|named/i.test(t)
+    );
     if (leadershipNews.length > 0) {
       signals.push({
         type: 'new_leadership',
-        title: 'Leadership Changes Detected',
+        title: 'Leadership Changes in News',
         description: leadershipNews[0],
         importanceScore: 8,
-        metadata: { newsItems: leadershipNews },
+        metadata: { allMatches: leadershipNews },
       });
     }
-  }
 
-  // 4. Product launch signal
-  if (extractedData['Google News']?.recentNews) {
-    const newsItems = extractedData['Google News'].recentNews;
-    const productNews = newsItems.filter((item: string) =>
-      /launch|release|announce|introduce|unveil/i.test(item)
+    const productNews = titles.filter((t) =>
+      /launch|release|announce|introduc|unveil|partner|acqui/i.test(t)
     );
-
     if (productNews.length > 0) {
       signals.push({
-        type: 'product_launch',
-        title: 'Recent Product Activity',
+        type: 'product_activity',
+        title: 'Recent Product or Partnership News',
         description: productNews[0],
-        importanceScore: 6,
-        metadata: { newsItems: productNews },
-      });
-    }
-  }
-
-  // 5. Competitor evaluation signal (from G2)
-  if (extractedData['G2']?.reviewThemes) {
-    const reviews = extractedData['G2'].reviewThemes;
-    const competitorMentions = reviews.filter((review: string) =>
-      /vs|compared to|alternative|switch/i.test(review)
-    );
-
-    if (competitorMentions.length > 0) {
-      signals.push({
-        type: 'competitor_evaluation',
-        title: 'Actively Evaluating Alternatives',
-        description: 'G2 reviews show comparison shopping behavior',
         importanceScore: 7,
-        sourceUrl: extractedData['G2'].g2Url,
-        metadata: { mentions: competitorMentions },
+        metadata: { allMatches: productNews },
       });
     }
   }
 
-  // 6. Employee growth signal
-  if (extractedData['LinkedIn Company']?.employeeCount) {
-    const count = extractedData['LinkedIn Company'].employeeCount;
-    // Parse employee count ranges
-    const match = count.match(/(\d+)-(\d+)/);
-    if (match) {
-      const avgSize = (parseInt(match[1]) + parseInt(match[2])) / 2;
-      if (avgSize > 100) {
-        signals.push({
-          type: 'company_scale',
-          title: 'Mid-Market to Enterprise Scale',
-          description: `${count} employees - established organization with budget`,
-          importanceScore: 6,
-          sourceUrl: extractedData['LinkedIn Company'].linkedinUrl,
-        });
-      }
+  // 4. Competitor signals
+  const competitors = extractedData['Competitor Research'];
+  if (competitors?.competitorContext) {
+    const ctx: string = competitors.competitorContext;
+    const vsMatch = ctx.match(/vs\.?\s+\w+/gi);
+    if (vsMatch?.length) {
+      signals.push({
+        type: 'competitive_landscape',
+        title: 'Competitive Context Available',
+        description: `Competitors mentioned: ${vsMatch.slice(0, 3).join(', ')}`,
+        importanceScore: 6,
+        metadata: { mentions: vsMatch.slice(0, 5) },
+      });
     }
   }
 
-  // 7. Contact role signal
-  if (extractedData['LinkedIn Contact']?.currentRole) {
-    const role = extractedData['LinkedIn Contact'].currentRole.toLowerCase();
-    if (/vp|director|head|chief|ceo|cto|cro/i.test(role)) {
+  // 5. Contact is decision maker
+  const contact = extractedData['Contact Research'];
+  if (contact?.contactContext) {
+    const ctx: string = contact.contactContext;
+    if (/vp|director|head of|chief|ceo|cto|cro|president|founder/i.test(ctx)) {
       signals.push({
         type: 'decision_maker',
         title: 'Senior Decision Maker',
-        description: `Contact holds ${extractedData['LinkedIn Contact'].currentRole} - has budget authority`,
+        description: 'Contact appears to hold a senior/executive role',
         importanceScore: 8,
-        sourceUrl: extractedData['LinkedIn Contact'].linkedinUrl,
+        metadata: { linkedinUrl: contact.linkedinUrl },
       });
     }
   }
-
-  // 8. Tech stack gap signal (simplified for MVP)
-  // In production, this would compare their stack against what you sell
 
   // Sort by importance
   signals.sort((a, b) => b.importanceScore - a.importanceScore);

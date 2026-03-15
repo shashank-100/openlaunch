@@ -164,7 +164,7 @@ export class ResearchAgent {
 
     const completion = await this.openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-5-mini',
-      max_tokens: 4096,
+      max_completion_tokens: 4096,
       messages: [
         {
           role: 'user',
@@ -240,17 +240,16 @@ Generate the brief now in clean markdown format.`;
   }
 
   /**
-   * Parse Claude's markdown response into structured data
+   * Parse GPT markdown response into structured data for DB storage
    */
   private parseBriefContent(content: string): any {
-    // Simple parsing - in production, you'd use a more robust parser
     const sections = {
-      companySnapshot: this.extractSection(content, 'Company Snapshot'),
-      recentSignals: this.extractSection(content, 'Recent Signals'),
-      contactIntel: this.extractSection(content, 'Contact Intel'),
-      techStack: this.extractSection(content, 'Tech Stack'),
-      competitiveContext: this.extractSection(content, 'Competitive Context'),
-      suggestedOpeners: this.extractSection(content, 'Suggested Openers'),
+      companySnapshot: this.extractSectionAsBullets(content, 'Company Snapshot'),
+      recentSignals: this.extractSectionAsBullets(content, 'Recent Signals'),
+      contactIntel: this.extractSectionAsBullets(content, 'Contact Intel'),
+      techStack: this.extractSectionAsBullets(content, 'Tech Stack'),
+      competitiveContext: this.extractSectionAsBullets(content, 'Competitive Context'),
+      suggestedOpeners: this.extractSectionAsBullets(content, 'Suggested Openers'),
       fullBriefMarkdown: content,
       fullBriefHtml: this.markdownToHtml(content),
     };
@@ -259,12 +258,28 @@ Generate the brief now in clean markdown format.`;
   }
 
   /**
-   * Extract section from markdown
+   * Extract a named section from markdown and return as { text, bullets[] }
+   * so DB columns get non-null JSON objects instead of raw strings
    */
-  private extractSection(content: string, sectionName: string): any {
-    const regex = new RegExp(`##?\\s*\\*?\\*?${sectionName}\\*?\\*?[^\\n]*\\n([\\s\\S]*?)(?=\\n##|$)`, 'i');
+  private extractSectionAsBullets(content: string, sectionName: string): any {
+    // Matches: "## 1) Company Snapshot", "## 1. Company Snapshot", "## Company Snapshot", "**Company Snapshot**"
+    const regex = new RegExp(
+      `#{1,3}\\s*(?:\\d+[.)\\s]+)?\\*{0,2}${sectionName}\\*{0,2}[^\\n]*\\n([\\s\\S]*?)(?=\\n#{1,3}\\s|$)`,
+      'i'
+    );
     const match = content.match(regex);
-    return match ? match[1].trim() : null;
+    if (!match) return null;
+
+    const raw = match[1].trim();
+    const bullets = raw
+      .split('\n')
+      .map((line) => line.replace(/^[-*•]\s*/, '').trim())
+      .filter((line) => line.length > 0 && !line.match(/^#+/));
+
+    return {
+      text: raw,
+      bullets,
+    };
   }
 
   /**

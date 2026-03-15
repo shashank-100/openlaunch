@@ -89,7 +89,7 @@ async function processResearchJob(job: any) {
     context = await createIsolatedContext();
 
     // Initialize research agent
-    const agent = new ResearchAgent(context, supabase, jobId);
+    const agent = new ResearchAgent(context, supabase, jobId!);
 
     // Run research
     const results = await agent.research(companyName, contactName, (progress) => {
@@ -127,6 +127,23 @@ async function processResearchJob(job: any) {
       .single();
 
     if (briefError) throw briefError;
+
+    // Save detected signals to signals table
+    if (results.signals.length > 0) {
+      await supabase.from('signals').insert(
+        results.signals.map((s: any) => ({
+          brief_id: briefRecord.id,
+          job_id: jobId,
+          user_id: userId,
+          signal_type: s.type,
+          title: s.title,
+          description: s.description,
+          importance_score: s.importanceScore,
+          source_url: s.sourceUrl || null,
+          metadata: s.metadata || null,
+        }))
+      );
+    }
 
     // Update job status
     await supabase

@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Geodo - AI Revenue Researcher',
-  description: 'Automated prospect intelligence for sales teams',
+  title: 'Intake — AI Revenue Researcher',
+  description: 'Real-time company intelligence powered by autonomous agents',
 }
 
 export default function RootLayout({
