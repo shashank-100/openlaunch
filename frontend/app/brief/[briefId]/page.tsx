@@ -62,6 +62,7 @@ export default function BriefPage() {
   const [copied, setCopied] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [showRaw, setShowRaw] = useState(false);
+  const [rating, setRating] = useState<'up' | 'down' | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -98,6 +99,15 @@ export default function BriefPage() {
     navigator.clipboard.writeText(brief.fullBriefMarkdown);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function submitRating(value: 'up' | 'down') {
+    setRating(value);
+    await fetch(`${BACKEND}/api/briefs/${briefId}/rate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating: value === 'up' ? 1 : -1 }),
+    }).catch(() => {});
   }
 
   function copyOpener(text: string, idx: number) {
@@ -254,12 +264,28 @@ export default function BriefPage() {
 
             {/* Footer */}
             <div className="flex items-center justify-between">
-              <button
-                onClick={copyAll}
-                className="text-white/20 text-xs hover:text-white/50 transition"
-              >
-                {copied ? '✓ copied' : 'copy brief'}
-              </button>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={copyAll}
+                  className="text-white/20 text-xs hover:text-white/50 transition"
+                >
+                  {copied ? '✓ copied' : 'copy brief'}
+                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => submitRating('up')}
+                    className={`text-sm transition ${rating === 'up' ? 'text-green-400' : 'text-white/20 hover:text-white/50'}`}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => submitRating('down')}
+                    className={`text-sm transition ${rating === 'down' ? 'text-red-400' : 'text-white/20 hover:text-white/50'}`}
+                  >
+                    ↓
+                  </button>
+                </div>
+              </div>
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => router.push('/')}

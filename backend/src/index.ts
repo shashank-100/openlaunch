@@ -41,11 +41,21 @@ export const researchQueue = new Queue('research-jobs', {
 });
 
 // Middleware
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:3000',
+].filter(Boolean);
+
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'http://localhost:3001',
-  ],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile, curl, Railway health checks)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.some(o => origin.startsWith(o))) return callback(null, true);
+    // Allow any railway.app subdomain
+    if (origin.endsWith('.railway.app') || origin.endsWith('.up.railway.app')) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
 app.use(express.json());

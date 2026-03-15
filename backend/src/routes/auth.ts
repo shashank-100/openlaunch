@@ -78,16 +78,23 @@ router.post('/login', async (req, res) => {
 
     if (error) throw error;
 
-    // Get user profile
+    // Get user profile + org
     const { data: user } = await supabase
       .from('users')
       .select('*')
       .eq('id', data.user.id)
       .single();
 
+    const { data: member } = await supabase
+      .from('organization_members')
+      .select('organization_id')
+      .eq('user_id', data.user.id)
+      .single();
+
     res.json({
       success: true,
       user,
+      organizationId: member?.organization_id || null,
       session: data.session,
     });
   } catch (error: any) {

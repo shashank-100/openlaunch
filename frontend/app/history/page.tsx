@@ -12,7 +12,6 @@ interface BriefSummary {
   contactName: string;
   sourcesVisited: number;
   createdAt: string;
-  jobStatus: string;
 }
 
 export default function HistoryPage() {
@@ -31,7 +30,6 @@ export default function HistoryPage() {
             contactName: b.contact_name,
             sourcesVisited: b.sources_visited,
             createdAt: b.created_at,
-            jobStatus: b.research_jobs?.status || 'completed',
           }))
         );
       })
@@ -94,9 +92,7 @@ export default function HistoryPage() {
                         minute: '2-digit',
                       })}
                     </p>
-                    <p className="text-white/20 text-xs mt-1">
-                      {brief.sourcesVisited} sources
-                    </p>
+                    <p className="text-white/20 text-xs mt-1">{brief.sourcesVisited} sources</p>
                   </div>
                 </div>
               </button>

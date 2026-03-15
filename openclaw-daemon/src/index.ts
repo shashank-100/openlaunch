@@ -137,10 +137,9 @@ async function processResearchJob(job: any) {
           user_id: userId,
           signal_type: s.type,
           title: s.title,
-          description: s.description,
           importance_score: s.importanceScore,
           source_url: s.sourceUrl || null,
-          metadata: s.metadata || null,
+          metadata: { ...(s.metadata || {}), description: s.description },
         }))
       );
       if (signalsError) {

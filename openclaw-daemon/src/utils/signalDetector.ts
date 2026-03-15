@@ -15,36 +15,22 @@ export interface Signal {
 export async function detectSignals(extractedData: Record<string, any>): Promise<Signal[]> {
   const signals: Signal[] = [];
 
-  // 1. Hiring surge signal
-  const jobs = extractedData['LinkedIn Jobs'];
-  if (jobs?.openRoles) {
-    const roleCount = jobs.openRoles.length;
-    if (roleCount > 5) {
-      signals.push({
-        type: 'hiring_surge',
-        title: 'Active Hiring',
-        description: `${roleCount} open positions found — growth signal`,
-        importanceScore: 8,
-        metadata: { roleCount, roles: jobs.openRoles.slice(0, 5) },
-      });
-    }
+  // 1. Hiring signals
+  const jobs = extractedData['Hiring Signals'];
+  if (jobs?.hiringSignal) {
+    const engRoles: string[] = jobs.engineeringRoles || [];
+    const leaderRoles: string[] = jobs.leadershipRoles || [];
 
-    const engRoles = jobs.engineeringRoles || jobs.openRoles.filter((r: string) =>
-      /engineer|developer|software|infrastructure|backend|frontend|ml|ai/i.test(r)
-    );
-    if (engRoles.length > 2) {
+    if (engRoles.length > 0) {
       signals.push({
         type: 'engineering_expansion',
         title: 'Engineering Team Growing',
-        description: `${engRoles.length} engineering roles open — building new capabilities`,
+        description: `Engineering roles open — building new capabilities`,
         importanceScore: 7,
         metadata: { roles: engRoles },
       });
     }
 
-    const leaderRoles = jobs.leadershipRoles || jobs.openRoles.filter((r: string) =>
-      /vp|director|head of|chief|manager|lead/i.test(r)
-    );
     if (leaderRoles.length > 0) {
       signals.push({
         type: 'leadership_hiring',
@@ -52,6 +38,14 @@ export async function detectSignals(extractedData: Record<string, any>): Promise
         description: `Recruiting for: ${leaderRoles.slice(0, 3).join(', ')}`,
         importanceScore: 8,
         metadata: { roles: leaderRoles },
+      });
+    } else if (jobs.hiringContext?.match(/hiring|recruiting|open roles/i)) {
+      signals.push({
+        type: 'hiring_surge',
+        title: 'Active Hiring Detected',
+        description: 'Company is actively recruiting across multiple roles',
+        importanceScore: 6,
+        metadata: { context: jobs.hiringContext?.substring(0, 300) },
       });
     }
   }
@@ -84,8 +78,8 @@ export async function detectSignals(extractedData: Record<string, any>): Promise
     }
   }
 
-  // 3. News signals — Google News now returns { title, source, time }[]
-  const news = extractedData['Google News'];
+  // 3. News signals
+  const news = extractedData['Recent News'];
   if (news?.recentNews?.length > 0) {
     const newsItems: { title: string; source: string; time: string }[] = news.recentNews;
     const titles = newsItems.map((n) => (typeof n === 'string' ? n : n.title));

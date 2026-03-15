@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
+const DEMO_ORG_ID = '00000000-0000-0000-0000-000000000002';
+
 export default function Home() {
   const router = useRouter();
   const [company, setCompany] = useState('');
@@ -18,14 +22,14 @@ export default function Home() {
     setError('');
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/webhook/research`, {
+      const res = await fetch(`${BACKEND}/api/webhook/research`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           companyName: company.trim(),
           contactName: contact.trim() || 'Unknown',
-          userId: '00000000-0000-0000-0000-000000000001',
-          organizationId: '00000000-0000-0000-0000-000000000002',
+          userId: DEMO_USER_ID,
+          organizationId: DEMO_ORG_ID,
         }),
       });
 
@@ -44,7 +48,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-black flex flex-col items-center justify-center px-4">
-      {/* Logo */}
       <div className="mb-12 text-center">
         <h1 className="text-white text-3xl font-semibold tracking-tight">Intake</h1>
         <div className="mt-3 h-px w-48 mx-auto bg-white/10" />
@@ -55,7 +58,6 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Input card */}
       <form onSubmit={handleSubmit} className="w-full max-w-md space-y-3">
         <input
           type="text"
@@ -86,9 +88,12 @@ export default function Home() {
         )}
       </form>
 
-      <p className="mt-8 text-white/20 text-xs">
-        No login. No setup. Just results.
-      </p>
+      <button
+        onClick={() => router.push('/history')}
+        className="mt-8 text-white/20 text-xs hover:text-white/40 transition"
+      >
+        view history
+      </button>
     </main>
   );
 }
