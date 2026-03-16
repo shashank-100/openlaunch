@@ -1,268 +1,128 @@
 import dotenv from 'dotenv';
-import { Worker } from 'bullmq';
-import { chromium, Browser, BrowserContext } from 'playwright';
+import crypto from 'crypto';
+import { Worker, Queue } from 'bullmq';
 import { createClient } from '@supabase/supabase-js';
-import { ResearchAgent } from './agents/ResearchAgent';
+import { runMonitorAgent } from './openclawClient';
 
 dotenv.config();
 
-let browser: Browser | null = null;
-
-// Initialize Supabase
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_KEY!
 );
 
-/**
- * Initialize persistent browser instance
- * Keeps a warm browser ready for instant job processing
- */
-async function initializeBrowser() {
-  console.log('🌐 Initializing persistent browser...');
-
-  browser = await chromium.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-blink-features=AutomationControlled',
-    ],
-  });
-
-  console.log('✅ Browser ready');
-  return browser;
-}
-
-/**
- * Create isolated browser context for each research job
- * Prevents cookie/session bleed between targets
- */
-async function createIsolatedContext(): Promise<BrowserContext> {
-  if (!browser) {
-    await initializeBrowser();
-  }
-
-  return await browser!.newContext({
-    viewport: { width: 1920, height: 1080 },
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    locale: 'en-US',
-    timezoneId: 'America/New_York',
-  });
-}
-
-/**
- * Process research job
- */
-async function processResearchJob(job: any) {
-  const { companyName, contactName, userId, organizationId, meetingTime } = job.data;
-
-  console.log(`\n🔍 Starting research for: ${companyName} - ${contactName}`);
-  console.log(`📅 Meeting time: ${meetingTime || 'Not specified'}`);
-
-  let context: BrowserContext | null = null;
-  let jobId: string | null = null;
-
+function parseRedis(url?: string) {
+  if (!url) return { host: 'localhost', port: 6379 };
   try {
-    // Create database entry for this job
-    const { data: jobRecord, error: jobError } = await supabase
-      .from('research_jobs')
-      .insert({
-        user_id: userId,
-        organization_id: organizationId,
-        company_name: companyName,
-        contact_name: contactName,
-        meeting_time: meetingTime,
-        status: 'processing',
-        started_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (jobError) throw jobError;
-    jobId = jobRecord.id;
-
-    // Update job progress
-    await job.updateProgress(10);
-
-    // Create isolated browser context
-    context = await createIsolatedContext();
-
-    // Initialize research agent
-    const agent = new ResearchAgent(context, supabase, jobId!);
-
-    // Run research
-    const results = await agent.research(companyName, contactName, (progress) => {
-      job.updateProgress(progress);
-    });
-
-    await job.updateProgress(90);
-
-    // Generate brief using results
-    const brief = await agent.generateBrief(results);
-
-    await job.updateProgress(95);
-
-    // Save brief to database
-    const { data: briefRecord, error: briefError } = await supabase
-      .from('briefs')
-      .insert({
-        job_id: jobId,
-        user_id: userId,
-        organization_id: organizationId,
-        company_name: companyName,
-        contact_name: contactName,
-        company_snapshot: brief.companySnapshot,
-        recent_signals: brief.recentSignals,
-        contact_intel: brief.contactIntel,
-        tech_stack: brief.techStack,
-        competitive_context: brief.competitiveContext,
-        suggested_openers: brief.suggestedOpeners,
-        full_brief_html: brief.fullBriefHtml,
-        full_brief_markdown: brief.fullBriefMarkdown,
-        sources_visited: results.sourcesVisited,
-        created_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (briefError) throw briefError;
-
-    // Save detected signals to signals table
-    if (results.signals.length > 0) {
-      const { error: signalsError } = await supabase.from('signals').insert(
-        results.signals.map((s: any) => ({
-          brief_id: briefRecord.id,
-          job_id: jobId,
-          user_id: userId,
-          signal_type: s.type,
-          title: s.title,
-          importance_score: s.importanceScore,
-          source_url: s.sourceUrl || null,
-          metadata: { ...(s.metadata || {}), description: s.description },
-        }))
-      );
-      if (signalsError) {
-        console.error('⚠️  Failed to save signals:', signalsError.message);
-      } else {
-        console.log(`  💾 Saved ${results.signals.length} signals to DB`);
-      }
-    }
-
-    // Update job status
-    await supabase
-      .from('research_jobs')
-      .update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', jobId);
-
-    await job.updateProgress(100);
-
-    console.log(`✅ Research completed for ${companyName}`);
-    console.log(`📊 Brief ID: ${briefRecord.id}`);
-
+    const p = new URL(url);
     return {
-      success: true,
-      briefId: briefRecord.id,
-      jobId,
+      host: p.hostname,
+      port: parseInt(p.port || '6379'),
+      ...(p.password && { password: p.password }),
+      ...(p.protocol === 'rediss:' && { tls: {} }),
     };
-
-  } catch (error: any) {
-    console.error(`❌ Research failed for ${companyName}:`, error.message);
-
-    // Update job with error
-    if (jobId) {
-      await supabase
-        .from('research_jobs')
-        .update({
-          status: 'failed',
-          error_message: error.message,
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', jobId);
-    }
-
-    throw error;
-
-  } finally {
-    // Clean up browser context
-    if (context) {
-      await context.close();
-    }
+  } catch {
+    return { host: 'localhost', port: 6379 };
   }
 }
 
-/**
- * Initialize worker
- */
-async function startWorker() {
-  console.log('🚀 Starting OpenClaw Daemon...');
+const redisConn = parseRedis(process.env.REDIS_URL);
+const queue = new Queue('research-jobs', { connection: redisConn });
 
-  // Initialize browser
-  await initializeBrowser();
+function hashSignal(accountId: string, type: string, summary: string) {
+  return crypto.createHash('md5')
+    .update(`${accountId}:${type}:${summary.toLowerCase().trim()}`)
+    .digest('hex');
+}
 
-  // Create worker
-  // Parse Redis connection — handles redis://, rediss://, and authenticated URLs
-  function parseRedisConnection(url?: string) {
-    if (!url) return { host: 'localhost', port: 6379 };
-    try {
-      const parsed = new URL(url);
-      return {
-        host: parsed.hostname,
-        port: parseInt(parsed.port || '6379'),
-        ...(parsed.password && { password: parsed.password }),
-        ...(parsed.protocol === 'rediss:' && { tls: {} }),
-      };
-    } catch {
-      return { host: 'localhost', port: 6379 };
+// Daemon owns: fetch accounts, call OpenClaw, save result, deduplicate
+async function processMonitorJob(job: any) {
+  const { companyName, domain, accountId } = job.data;
+  console.log(`\n📡 Monitoring: ${companyName}`);
+
+  // Call OpenClaw — it only knows about the web
+  const result = await runMonitorAgent(companyName, domain || '');
+
+  // Daemon owns: deduplication
+  const hash = hashSignal(accountId, result.signal_type, result.signal_summary);
+  const { error } = await supabase.from('signals').insert({
+    account_id: accountId,
+    signal_type: result.signal_type,
+    signal_summary: result.signal_summary,
+    pain_point: result.pain_point,
+    outreach_angle: result.outreach_angle,
+    email_subject: result.email_subject,
+    email_body: result.email_body,
+    source_url: result.source_url || null,
+    signal_hash: hash,
+    is_new: true,
+  });
+
+  if (error && error.code !== '23505') throw error; // 23505 = dupe, skip silently
+
+  // Daemon owns: update account state
+  await supabase.from('accounts')
+    .update({ last_monitored_at: new Date().toISOString() })
+    .eq('id', accountId);
+
+  const isNew = !error;
+  console.log(`✅ ${companyName} — ${isNew ? result.signal_summary : 'dupe, skipped'}`);
+  return { success: true, isNew };
+}
+
+// Daemon owns: scheduling logic
+async function runScheduler() {
+  const { data: accounts } = await supabase
+    .from('accounts')
+    .select('*')
+    .eq('monitoring_enabled', true);
+
+  if (!accounts?.length) return;
+
+  let queued = 0;
+  const now = Date.now();
+
+  for (const account of accounts) {
+    const freq = account.monitoring_frequency || 'daily';
+    const threshold =
+      freq === 'hourly' ? 60 * 60 * 1000 :
+      freq === 'weekly' ? 7 * 24 * 60 * 60 * 1000 :
+      24 * 60 * 60 * 1000;
+
+    const last = account.last_monitored_at
+      ? new Date(account.last_monitored_at).getTime() : 0;
+
+    if (now - last >= threshold) {
+      await queue.add('monitor', {
+        companyName: account.company_name,
+        domain: account.domain || '',
+        accountId: account.id,
+      }, { removeOnComplete: true, attempts: 2 });
+      queued++;
     }
   }
 
-  const worker = new Worker(
-    'research-jobs',
-    async (job) => {
-      return await processResearchJob(job);
-    },
-    {
-      connection: parseRedisConnection(process.env.REDIS_URL),
-      concurrency: 3, // Process up to 3 jobs concurrently
-      limiter: {
-        max: 10,
-        duration: 60000, // Max 10 jobs per minute
-      },
-    }
-  );
-
-  worker.on('completed', (job) => {
-    console.log(`✅ Job ${job.id} completed`);
-  });
-
-  worker.on('failed', (job, err) => {
-    console.error(`❌ Job ${job?.id} failed:`, err.message);
-  });
-
-  worker.on('error', (err) => {
-    console.error('Worker error:', err);
-  });
-
-  console.log('✅ OpenClaw Daemon is running');
-  console.log('📡 Waiting for research jobs...');
-
-  // Graceful shutdown
-  process.on('SIGTERM', async () => {
-    console.log('\n🛑 Shutting down...');
-    await worker.close();
-    if (browser) {
-      await browser.close();
-    }
-    process.exit(0);
-  });
+  if (queued > 0) console.log(`🕐 Queued ${queued} monitor jobs`);
 }
 
-// Start the daemon
-startWorker().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+async function start() {
+  console.log('🚀 INTAKE Daemon — starting');
+  console.log('   Daemon: accounts, scheduling, dedup, persistence');
+  console.log('   OpenClaw: web search, signal detection');
+
+  const worker = new Worker('research-jobs', processMonitorJob, {
+    connection: redisConn,
+    concurrency: 3,
+  });
+
+  worker.on('completed', (job) => console.log(`✅ Job ${job.id} done`));
+  worker.on('failed', (job, err) => console.error(`❌ Job ${job?.id}:`, err.message));
+
+  await runScheduler();
+  setInterval(runScheduler, 15 * 60 * 1000);
+
+  console.log('✅ Daemon running — scheduler every 15 min');
+  process.on('SIGTERM', async () => { await worker.close(); process.exit(0); });
+}
+
+start().catch(err => { console.error('Fatal:', err); process.exit(1); });

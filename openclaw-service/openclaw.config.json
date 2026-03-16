@@ -1,0 +1,28 @@
+{
+  "gateway": {
+    "port": 18789,
+    "bind": "lan",
+    "token": "${OPENCLAW_TOKEN}"
+  },
+  "agents": [
+    {
+      "id": "intake-researcher",
+      "name": "Intake Research Agent",
+      "skill": "intake-research",
+      "provider": "openai",
+      "model": "gpt-5-mini",
+      "tools": ["web_search", "browser"],
+      "memory": false
+    }
+  ],
+  "providers": {
+    "openai": {
+      "apiKey": "${OPENAI_API_KEY}"
+    }
+  },
+  "search": {
+    "tavily": {
+      "apiKey": "${TAVILY_API_KEY}"
+    }
+  }
+}

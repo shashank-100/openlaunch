@@ -3,324 +3,187 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
-
-interface BriefSection {
-  text: string;
-  bullets: string[];
-}
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backend-production-d5926.up.railway.app';
 
 interface Brief {
   id: string;
-  companyName: string;
-  contactName: string;
-  sourcesVisited: number;
-  createdAt: string;
-  companySnapshot: BriefSection | null;
-  recentSignals: BriefSection | null;
-  contactIntel: BriefSection | null;
-  techStack: BriefSection | null;
-  competitiveContext: BriefSection | null;
-  suggestedOpeners: BriefSection | null;
-  fullBriefMarkdown: string;
+  signal_id: string;
+  account_id: string;
+  what_they_do: string;
+  the_signal: string;
+  the_pain: string;
+  your_angle: string;
+  the_email: string;
+  created_at: string;
 }
 
 interface Signal {
-  type: string;
-  title: string;
-  description: string;
-  importanceScore: number;
+  id: string;
+  signal_type: string;
+  signal_summary: string;
+  email_subject: string;
+  email_body: string;
+  accounts: { company_name: string } | null;
 }
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
-
-const SIGNAL_COLORS: Record<string, string> = {
-  hiring: '#f59e0b',
+const TYPE_COLOR: Record<string, string> = {
   funding: '#22c55e',
-  product: '#60a5fa',
+  hiring: '#f59e0b',
   leadership: '#a78bfa',
+  product: '#60a5fa',
   competitive: '#f87171',
-  partnership: '#34d399',
-  expansion: '#fb923c',
-  general: '#9ca3af',
+  general: '#6b7280',
 };
 
 export default function BriefPage() {
   const { briefId } = useParams<{ briefId: string }>();
   const router = useRouter();
   const [brief, setBrief] = useState<Brief | null>(null);
-  const [signals, setSignals] = useState<Signal[]>([]);
+  const [signal, setSignal] = useState<Signal | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
-  const [showRaw, setShowRaw] = useState(false);
-  const [rating, setRating] = useState<'up' | 'down' | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`${BACKEND}/api/briefs/${briefId}`);
-        if (!res.ok) throw new Error('Brief not found');
-        const { brief: data } = await res.json();
-        setBrief({
-          id: data.id,
-          companyName: data.company_name,
-          contactName: data.contact_name,
-          sourcesVisited: data.sources_visited,
-          createdAt: data.created_at,
-          companySnapshot: data.company_snapshot,
-          recentSignals: data.recent_signals,
-          contactIntel: data.contact_intel,
-          techStack: data.tech_stack,
-          competitiveContext: data.competitive_context,
-          suggestedOpeners: data.suggested_openers,
-          fullBriefMarkdown: data.full_brief_markdown,
-        });
-        setSignals(data.signals || []);
-      } catch {
-        // Brief not found
-      } finally {
-        setLoading(false);
-      }
+        // briefId could be a brief ID or signal ID — backend handles both
+        const [briefRes, signalRes] = await Promise.all([
+          fetch(`${BACKEND}/api/briefs/${briefId}`),
+          fetch(`${BACKEND}/api/signals/${briefId}`),
+        ]);
+        if (briefRes.ok) {
+          const { brief: b } = await briefRes.json();
+          setBrief(b);
+        }
+        if (signalRes.ok) {
+          const { signal: s } = await signalRes.json();
+          setSignal(s);
+        }
+      } catch {}
+      finally { setLoading(false); }
     }
     load();
   }, [briefId]);
 
-  function copyAll() {
-    if (!brief?.fullBriefMarkdown) return;
-    navigator.clipboard.writeText(brief.fullBriefMarkdown);
+  function copyEmail() {
+    const emailText = brief?.the_email || `${signal?.email_subject}\n\n${signal?.email_body}`;
+    navigator.clipboard.writeText(emailText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
-  async function submitRating(value: 'up' | 'down') {
-    setRating(value);
-    await fetch(`${BACKEND}/api/briefs/${briefId}/rate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rating: value === 'up' ? 1 : -1 }),
-    }).catch(() => {});
-  }
-
-  function copyOpener(text: string, idx: number) {
-    navigator.clipboard.writeText(text);
-    setCopiedIdx(idx);
-    setTimeout(() => setCopiedIdx(null), 1500);
-  }
+  const companyName = signal?.accounts?.company_name || 'Company';
+  const color = TYPE_COLOR[signal?.signal_type || 'general'] || TYPE_COLOR.general;
 
   if (loading) {
     return (
       <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <span className="font-mono text-white/20 text-sm tracking-widest animate-pulse">LOADING</span>
+        <span className="text-white/20 text-sm font-mono animate-pulse tracking-widest">LOADING</span>
       </main>
     );
   }
 
-  if (!brief) {
+  if (!brief && !signal) {
     return (
-      <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center font-mono">
+      <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="text-center">
-          <p className="text-white/30 text-sm mb-4">Brief not found</p>
-          <button onClick={() => router.push('/')} className="text-white/50 underline text-xs">
-            ← Back
-          </button>
+          <p className="text-white/30 text-sm font-mono">Brief not found</p>
+          <button onClick={() => router.push('/feed')} className="text-white/20 text-xs mt-4 hover:text-white/40 transition">← back to feed</button>
         </div>
       </main>
     );
   }
-
-  const topSignals = signals.slice(0, 6);
-  const openers = brief.suggestedOpeners?.bullets || [];
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white font-mono">
-      <div className="max-w-2xl mx-auto px-6 py-12">
+      <div className="max-w-xl mx-auto px-6 py-12">
 
         {/* Nav */}
         <div className="flex items-center justify-between mb-10 text-white/20 text-xs">
-          <button onClick={() => router.push('/')} className="hover:text-white/50 transition">← new</button>
-          <div className="flex items-center gap-5">
-            <button onClick={() => router.push('/history')} className="hover:text-white/50 transition">history</button>
-            <button onClick={() => setShowRaw(!showRaw)} className="hover:text-white/50 transition">
-              {showRaw ? 'formatted' : 'raw'}
-            </button>
-          </div>
+          <button onClick={() => router.push('/feed')} className="hover:text-white/50 transition">← feed</button>
+          <span className="tracking-widest uppercase">INTAKE</span>
+          <span
+            className="text-[10px] px-2 py-0.5 rounded"
+            style={{ color, backgroundColor: `${color}18`, border: `1px solid ${color}30` }}
+          >
+            {signal?.signal_type}
+          </span>
         </div>
 
-        {showRaw ? (
-          <pre className="text-white/40 text-xs leading-relaxed whitespace-pre-wrap">
-            {brief.fullBriefMarkdown || 'No markdown available'}
-          </pre>
+        {/* Company header */}
+        <div className="mb-8">
+          <p className="text-white/30 text-[10px] tracking-[0.25em] uppercase mb-1">{companyName}</p>
+          <p className="text-white/80 text-base leading-snug">{signal?.signal_summary}</p>
+        </div>
+
+        <div className="text-white/10 text-xs mb-8">{'─'.repeat(52)}</div>
+
+        {brief ? (
+          <div className="space-y-7">
+
+            {/* Section 1 */}
+            <div>
+              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">What They Do</p>
+              <p className="text-white/70 text-sm leading-relaxed">{brief.what_they_do}</p>
+            </div>
+
+            {/* Section 2 */}
+            <div>
+              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">The Signal</p>
+              <p className="text-white/70 text-sm leading-relaxed">{brief.the_signal}</p>
+            </div>
+
+            {/* Section 3 */}
+            <div>
+              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">The Pain</p>
+              <p className="text-white/70 text-sm leading-relaxed">{brief.the_pain}</p>
+            </div>
+
+            {/* Section 4 */}
+            <div>
+              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">Your Angle</p>
+              <p style={{ color }} className="text-sm leading-relaxed font-medium">{brief.your_angle}</p>
+            </div>
+
+            {/* Section 5 — The Email */}
+            <div>
+              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">The Email</p>
+              <div className="bg-white/[0.04] border border-white/10 rounded-xl p-4">
+                <pre className="text-white/70 text-xs leading-relaxed whitespace-pre-wrap font-mono">{brief.the_email}</pre>
+              </div>
+            </div>
+
+          </div>
         ) : (
-          <>
-            {/* Brief header */}
-            <div className="mb-8">
-              <p className="text-white/20 text-[10px] tracking-[0.25em] uppercase mb-4">INTAKE INTELLIGENCE BRIEF</p>
-              <div className="text-white/10 text-xs mb-5">{'━'.repeat(48)}</div>
-              <div className="space-y-1">
-                <div className="flex gap-4">
-                  <span className="text-white/25 text-xs w-16 flex-shrink-0">COMPANY</span>
-                  <span className="text-white text-sm">{brief.companyName}</span>
-                </div>
-                {brief.contactName && brief.contactName !== 'Unknown' && (
-                  <div className="flex gap-4">
-                    <span className="text-white/25 text-xs w-16 flex-shrink-0">CONTACT</span>
-                    <span className="text-white/70 text-sm">{brief.contactName}</span>
-                  </div>
-                )}
-                <div className="flex gap-4">
-                  <span className="text-white/25 text-xs w-16 flex-shrink-0">GENERATED</span>
-                  <span className="text-white/40 text-xs mt-0.5">{timeAgo(brief.createdAt)} · {brief.sourcesVisited} live sources</span>
-                </div>
+          // Signal has no brief yet — show email draft from signal
+          <div className="space-y-7">
+            <div>
+              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">The Email</p>
+              <div className="bg-white/[0.04] border border-white/10 rounded-xl p-4">
+                <p className="text-white/50 text-[10px] mb-2">Subject: {signal?.email_subject}</p>
+                <pre className="text-white/70 text-xs leading-relaxed whitespace-pre-wrap font-mono">{signal?.email_body}</pre>
               </div>
             </div>
-
-            {/* Signals */}
-            {topSignals.length > 0 && (
-              <section className="mb-8">
-                <p className="text-white/20 text-[10px] tracking-[0.25em] uppercase mb-4">RECENT SIGNALS</p>
-                <div className="space-y-2.5">
-                  {topSignals.map((s, i) => {
-                    const color = SIGNAL_COLORS[s.type] || SIGNAL_COLORS.general;
-                    const tag = s.type || 'signal';
-                    return (
-                      <div key={i} className="flex items-start gap-3">
-                        <span className="text-white/15 text-xs mt-0.5 flex-shrink-0 w-3">·</span>
-                        <span className="text-white/75 text-sm leading-snug flex-1">{s.title}</span>
-                        <span
-                          className="text-[10px] flex-shrink-0 mt-0.5 px-1.5 py-0.5 rounded tracking-wide"
-                          style={{ color, backgroundColor: `${color}15`, border: `1px solid ${color}28` }}
-                        >
-                          {tag}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
-            <div className="text-white/8 text-xs mb-8">{'━'.repeat(48)}</div>
-
-            {/* Company Snapshot */}
-            <BulletSection label="COMPANY SNAPSHOT" data={brief.companySnapshot} />
-
-            {/* Tech Stack — inline pill style */}
-            {brief.techStack?.bullets?.length ? (
-              <section className="mb-8">
-                <p className="text-white/20 text-[10px] tracking-[0.25em] uppercase mb-3">TECH STACK</p>
-                <p className="text-white/55 text-sm leading-relaxed tracking-wide">
-                  {brief.techStack.bullets.map((b, i) => (
-                    <span key={i}>
-                      {i > 0 && <span className="text-white/20 mx-2">·</span>}
-                      {b.replace(/^(uses?|built on|powered by|running)\s*/i, '')}
-                    </span>
-                  ))}
-                </p>
-              </section>
-            ) : null}
-
-            {/* Competitive Context */}
-            <BulletSection label="COMPETITIVE CONTEXT" data={brief.competitiveContext} />
-
-            {/* Contact Intel */}
-            <BulletSection label="CONTACT INTEL" data={brief.contactIntel} />
-
-            <div className="text-white/8 text-xs mb-8">{'━'.repeat(48)}</div>
-
-            {/* Suggested Openers */}
-            {openers.length > 0 && (
-              <section className="mb-8">
-                <p className="text-white/20 text-[10px] tracking-[0.25em] uppercase mb-4">SUGGESTED OPENERS</p>
-                <div className="space-y-4">
-                  {openers.map((opener, i) => (
-                    <div
-                      key={i}
-                      className="group flex items-start gap-3 cursor-pointer"
-                      onClick={() => copyOpener(opener, i)}
-                    >
-                      <span className="text-white/20 text-xs mt-0.5 flex-shrink-0">{i + 1}</span>
-                      <p className="text-white/70 text-sm leading-relaxed flex-1">
-                        &ldquo;{opener}&rdquo;
-                      </p>
-                      <span className="text-white/20 text-[10px] mt-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition w-8 text-right">
-                        {copiedIdx === i ? '✓' : 'copy'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            <div className="text-white/8 text-xs mb-8">{'━'.repeat(48)}</div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={copyAll}
-                  className="text-white/20 text-xs hover:text-white/50 transition"
-                >
-                  {copied ? '✓ copied' : 'copy brief'}
-                </button>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => submitRating('up')}
-                    className={`text-sm transition ${rating === 'up' ? 'text-green-400' : 'text-white/20 hover:text-white/50'}`}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    onClick={() => submitRating('down')}
-                    className={`text-sm transition ${rating === 'down' ? 'text-red-400' : 'text-white/20 hover:text-white/50'}`}
-                  >
-                    ↓
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => router.push('/')}
-                  className="text-white/20 text-xs hover:text-white/50 transition"
-                >
-                  research another
-                </button>
-                <button
-                  onClick={() => router.push(`/buyer/${briefId}`)}
-                  className="text-white/40 text-xs border border-white/15 hover:border-white/35 hover:text-white/70 rounded px-3 py-1.5 transition"
-                >
-                  buyer one-pager →
-                </button>
-              </div>
-            </div>
-          </>
+          </div>
         )}
+
+        {/* Actions */}
+        <div className="flex gap-3 mt-10">
+          <button
+            onClick={copyEmail}
+            className="flex-1 py-3 text-xs border border-white/15 text-white/50 rounded-xl hover:border-white/30 hover:text-white/80 transition"
+          >
+            {copied ? 'Copied!' : 'Copy Email'}
+          </button>
+          <button
+            onClick={() => router.push(`/send/${signal?.id || briefId}`)}
+            className="flex-1 py-3 text-xs bg-white text-black font-medium rounded-xl hover:bg-white/90 transition"
+          >
+            Send Email
+          </button>
+        </div>
+
       </div>
     </main>
-  );
-}
-
-function BulletSection({ label, data }: { label: string; data: BriefSection | null }) {
-  if (!data?.bullets?.length) return null;
-  return (
-    <section className="mb-8">
-      <p className="text-white/20 text-[10px] tracking-[0.25em] uppercase mb-3">{label}</p>
-      <div className="space-y-2">
-        {data.bullets.map((b, i) => (
-          <div key={i} className="flex items-start gap-3">
-            <span className="text-white/15 text-xs mt-0.5 flex-shrink-0 w-3">·</span>
-            <p className="text-white/65 text-sm leading-relaxed">{b}</p>
-          </div>
-        ))}
-      </div>
-    </section>
   );
 }

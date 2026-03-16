@@ -3,14 +3,14 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+const BACKEND = 'https://backend-production-d5926.up.railway.app';
 
 const SOURCES = [
-  'Company Website',
+  'Company Overview',
   'Funding & Company Info',
-  'Google News',
-  'Tech Stack (Google)',
-  'LinkedIn Jobs',
+  'Recent News',
+  'Tech Stack',
+  'Hiring Signals',
   'Reviews & Reputation',
   'Competitor Research',
   'Contact Research',
@@ -78,7 +78,7 @@ export default function ResearchPage() {
     if (p === lastProgress.current) return;
     lastProgress.current = p;
 
-    if (p === 10) addLog('Browser initialized. Starting research...');
+    if (p === 10) addLog('Agent started. Querying sources...');
     if (p > 10 && p <= 90) {
       const idx = Math.floor((p - 10) / 10);
       if (idx < SOURCES.length) addLog(`Scanning ${SOURCES[idx]}...`);
