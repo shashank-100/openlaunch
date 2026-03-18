@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
-const BACKEND = 'https://backend-production-d5926.up.railway.app';
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backend-production-d5926.up.railway.app';
 
 export default function BuyerAssetPage() {
   const { briefId } = useParams<{ briefId: string }>();

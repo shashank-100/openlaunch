@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { setSession } from '../../lib/auth';
 
-const BACKEND = 'https://backend-production-d5926.up.railway.app';
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backend-production-d5926.up.railway.app';
 
 export default function LoginPage() {
   const router = useRouter();

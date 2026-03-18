@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const BACKEND = 'https://backend-production-d5926.up.railway.app';
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backend-production-d5926.up.railway.app';
 const DEMO_USER = '00000000-0000-0000-0000-000000000001';
 
 interface BriefSummary {
