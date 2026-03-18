@@ -57,7 +57,7 @@ Return JSON:
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
-        model: 'gpt-5-mini',
+        model: 'gpt-5-mini-2025-08-07',
         messages: [{ role: 'user', content: prompt }],
         response_format: { type: 'json_object' },
       },

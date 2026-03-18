@@ -7,6 +7,7 @@ import accountRoutes from './routes/accounts';
 import signalRoutes from './routes/signals';
 import briefRoutes from './routes/briefs';
 import outreachRoutes from './routes/outreach';
+import webhookRoutes from './routes/webhook';
 
 dotenv.config();
 
@@ -52,6 +53,7 @@ app.use(express.json());
 
 app.get('/health', (req, res) => res.json({ status: 'healthy', ts: new Date().toISOString() }));
 
+app.use('/api/webhook', webhookRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/signals', signalRoutes);
 app.use('/api/briefs', briefRoutes);

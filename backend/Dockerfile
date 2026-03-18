@@ -1,6 +1,7 @@
 FROM node:20-alpine
 
 WORKDIR /app
+# Updated with all routes
 
 COPY package*.json ./
 RUN npm install

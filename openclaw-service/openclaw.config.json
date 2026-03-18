@@ -10,7 +10,7 @@
       "name": "Intake Research Agent",
       "skill": "intake-research",
       "provider": "openai",
-      "model": "gpt-5-mini",
+      "model": "gpt-5-mini-2025-08-07",
       "tools": ["web_search", "browser"],
       "memory": false
     }

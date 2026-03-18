@@ -9,11 +9,13 @@ export default function Home() {
   const router = useRouter();
   const [company, setCompany] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!company.trim()) return;
     setLoading(true);
+    setError('');
     try {
       // Add to accounts if not already there
       const res = await fetch(`${BACKEND}/api/accounts`, {
@@ -21,12 +23,25 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ companyName: company.trim() }),
       });
+
+      if (!res.ok) {
+        throw new Error(`Failed to add account: ${res.status}`);
+      }
+
       const { account } = await res.json();
+
       // Trigger immediate scan
-      await fetch(`${BACKEND}/api/accounts/${account.id}/scan`, { method: 'POST' });
+      const scanRes = await fetch(`${BACKEND}/api/accounts/${account.id}/scan`, { method: 'POST' });
+
+      if (!scanRes.ok) {
+        throw new Error(`Failed to start scan: ${scanRes.status}`);
+      }
+
       // Go to feed to see result
       router.push('/feed');
-    } catch {
+    } catch (err: any) {
+      console.error('Research failed:', err);
+      setError(err.message || 'Failed to start research. Please try again.');
       setLoading(false);
     }
   }
@@ -62,6 +77,11 @@ export default function Home() {
               className="w-full bg-white/[0.04] border border-white/10 text-white placeholder-white/20 rounded-xl px-5 py-4 text-sm focus:outline-none focus:border-white/25 focus:bg-white/[0.06] transition"
             />
           </div>
+          {error && (
+            <div className="text-red-400 text-xs px-2 py-1 bg-red-500/10 border border-red-500/20 rounded-lg">
+              {error}
+            </div>
+          )}
           <button
             type="submit"
             disabled={loading || !company.trim()}
