@@ -95,17 +95,6 @@ Frontend (Next.js)  →  Backend (Express)  →  Redis Queue  →  OpenClaw Daem
 - [ ] Verify calendar sync works
 - [ ] Test brief generation
 
-### Should Have (Important)
-- [ ] Update "Intake" → "Geodo" everywhere
-- [ ] Add error handling on all API routes
-- [ ] Test with real calendar meetings
-
-### Nice to Have (Polish)
-- [ ] Complete Slack delivery
-- [ ] Wire brief rating UI
-- [ ] Add Microsoft Outlook support
-
----
 
 ## 🚀 Deployment
 

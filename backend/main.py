@@ -5,7 +5,7 @@ from supabase import create_client, Client
 import os
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 
 app = FastAPI()
 
@@ -24,9 +24,6 @@ supabase: Client = create_client(
 
 DEMO_USER_ID = "00000000-0000-0000-0000-000000000001"
 
-
-# --- Models ---
-
 class AccountCreate(BaseModel):
     companyName: str
     domain: str | None = None
@@ -37,15 +34,9 @@ class OutreachSend(BaseModel):
     subject: str
     body: str
 
-
-# --- Health ---
-
 @app.get("/health")
 def health():
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
-
-
-# --- Accounts ---
+    return {"status": "healthy", "timestamp": datetime.now(UTC).isoformat()}
 
 @app.get("/api/accounts")
 def get_accounts():
@@ -74,29 +65,16 @@ def scan_account(account_id: str):
     if not res.data:
         raise HTTPException(status_code=404, detail="Account not found")
     account = res.data
-
-    # Push job in BullMQ-compatible format to Redis
     import redis as redislib
     r = redislib.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
     job_id = str(uuid.uuid4())
-    job = {
-        "name": "monitor",
-        "data": {
-            "companyName": account["company_name"],
-            "domain": account.get("domain") or "",
-            "accountId": account["id"]
-        },
-        "opts": {"attempts": 2, "removeOnComplete": True}
-    }
+    job = {"name": "monitor", "id": job_id, "data": {"companyName": account["company_name"], "domain": account.get("domain") or "", "accountId": account["id"]}, "opts": {"attempts": 2, "removeOnComplete": True}}
     r.lpush("bull:research-jobs:wait", json.dumps(job))
-    return {"success": True, "queued": True}
-
-
-# --- Signals ---
+    return {"success": True, "queued": True, "jobId": job_id}
 
 @app.get("/api/signals")
 def get_signals(limit: int = 50):
-    res = supabase.table("signals").select("*, accounts(*)").order("created_at", desc=True).limit(limit).execute()
+    res = supabase.table("signals").select("*, accounts(*)").order("detected_at", desc=True).limit(limit).execute()
     return {"signals": res.data}
 
 @app.get("/api/signals/unread-count")
@@ -111,15 +89,11 @@ def get_signal(signal_id: str):
         raise HTTPException(status_code=404, detail="Signal not found")
     return {"signal": res.data}
 
-
-# --- Briefs ---
-
 @app.get("/api/briefs/{brief_id}")
 def get_brief(brief_id: str):
     res = supabase.table("briefs").select("*").eq("id", brief_id).single().execute()
     if res.data:
         return {"brief": res.data}
-    # Try as signal ID
     sig = supabase.table("signals").select("*, accounts(*)").eq("id", brief_id).single().execute()
     if not sig.data:
         raise HTTPException(status_code=404, detail="Not found")
@@ -127,27 +101,14 @@ def get_brief(brief_id: str):
 
 @app.post("/api/briefs/{brief_id}/rate")
 def rate_brief(brief_id: str, body: dict):
-    rating = body.get("rating")
-    supabase.table("brief_ratings").insert({"brief_id": brief_id, "rating": rating, "user_id": DEMO_USER_ID}).execute()
+    supabase.table("brief_ratings").insert({"brief_id": brief_id, "rating": body.get("rating"), "user_id": DEMO_USER_ID}).execute()
     return {"success": True}
-
-
-# --- Outreach ---
 
 @app.post("/api/outreach/send")
 def send_outreach(body: OutreachSend):
-    # Mark signal as actioned
     supabase.table("signals").update({"is_new": False}).eq("id", body.signalId).execute()
-    # Log the outreach
-    supabase.table("outreach_log").insert({
-        "signal_id": body.signalId,
-        "user_id": DEMO_USER_ID,
-        "to_email": body.to,
-        "subject": body.subject,
-        "body": body.body,
-    }).execute()
+    supabase.table("outreach").insert({"signal_id": body.signalId, "user_id": DEMO_USER_ID, "to_email": body.to, "subject": body.subject, "body": body.body}).execute()
     return {"success": True}
-
 
 if __name__ == "__main__":
     import uvicorn
