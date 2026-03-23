@@ -261,12 +261,20 @@ async def gmail_callback(code: str = None, error: str = None):
     tokens = res.json()
     access_token = tokens.get("access_token", "")
     refresh_token = tokens.get("refresh_token", "")
-    # Store tokens in DB for the demo user
-    supabase.table("personas").update({
-        "gmail_access_token": access_token,
-        "gmail_refresh_token": refresh_token,
-        "updated_at": datetime.now(UTC).isoformat(),
-    }).eq("user_id", DEMO_USER_ID).execute()
+    # Store tokens in DB for the demo user (upsert in case no persona row exists yet)
+    existing = supabase.table("personas").select("id").eq("user_id", DEMO_USER_ID).limit(1).execute()
+    if existing.data:
+        supabase.table("personas").update({
+            "gmail_access_token": access_token,
+            "gmail_refresh_token": refresh_token,
+            "updated_at": datetime.now(UTC).isoformat(),
+        }).eq("user_id", DEMO_USER_ID).execute()
+    else:
+        supabase.table("personas").insert({
+            "user_id": DEMO_USER_ID,
+            "gmail_access_token": access_token,
+            "gmail_refresh_token": refresh_token,
+        }).execute()
     return RedirectResponse("https://frontend-delta-murex-26.vercel.app/settings?gmail_connected=true")
 
 @app.get("/api/gmail/tokens")

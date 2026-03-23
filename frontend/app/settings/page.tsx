@@ -93,14 +93,14 @@ function SettingsContent() {
           onChange={e => setPersona(p => ({ ...p, [key]: e.target.value }))}
           placeholder={placeholder}
           rows={4}
-          className="w-full bg-white/3 border border-white/8 rounded-lg px-3 py-2.5 text-white/80 text-sm placeholder-white/20 focus:outline-none focus:border-white/20 resize-none font-mono"
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/30 resize-none font-mono"
         />
       ) : (
         <input
           value={persona[key]}
           onChange={e => setPersona(p => ({ ...p, [key]: e.target.value }))}
           placeholder={placeholder}
-          className="w-full bg-white/3 border border-white/8 rounded-lg px-3 py-2.5 text-white/80 text-sm placeholder-white/20 focus:outline-none focus:border-white/20"
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm placeholder-white/30 focus:outline-none focus:border-white/30"
         />
       )}
     </div>
