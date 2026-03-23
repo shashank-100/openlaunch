@@ -246,7 +246,7 @@ def gmail_connect():
 @app.get("/api/gmail/callback")
 async def gmail_callback(code: str = None, error: str = None):
     if error or not code:
-        return RedirectResponse("https://geodo-frontend-production.up.railway.app/settings?gmail_error=true")
+        return RedirectResponse("https://frontend-delta-murex-26.vercel.app/settings?gmail_error=true")
     client_id = os.getenv("GMAIL_CLIENT_ID", "")
     client_secret = os.getenv("GMAIL_CLIENT_SECRET", "")
     redirect_uri = os.getenv("GMAIL_REDIRECT_URI", "https://backend-production-d5926.up.railway.app/api/gmail/callback")
@@ -267,7 +267,7 @@ async def gmail_callback(code: str = None, error: str = None):
         "gmail_refresh_token": refresh_token,
         "updated_at": datetime.now(UTC).isoformat(),
     }).eq("user_id", DEMO_USER_ID).execute()
-    return RedirectResponse("https://geodo-frontend-production.up.railway.app/settings?gmail_connected=true")
+    return RedirectResponse("https://frontend-delta-murex-26.vercel.app/settings?gmail_connected=true")
 
 @app.get("/api/gmail/tokens")
 def get_gmail_tokens():
