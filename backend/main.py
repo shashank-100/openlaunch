@@ -174,6 +174,36 @@ def get_signals(limit: int = 50):
     res = supabase.table("signals").select("*, accounts(*)").order("detected_at", desc=True).limit(limit).execute()
     return {"signals": res.data}
 
+@app.post("/api/signals")
+def create_signal(body: SignalCreate):
+    res = supabase.table("signals").insert({
+        "account_id": body.accountId,
+        "signal_type": body.signalType,
+        "signal_summary": body.signalSummary,
+        "pain_point": body.painPoint,
+        "product_insight": body.productInsight,
+        "opportunity": body.opportunity,
+        "relevance_score": body.relevanceScore,
+        "outreach_angle": body.outreachAngle,
+        "email_subject": body.emailSubject,
+        "email_body": body.emailBody,
+        "source_url": body.sourceUrl,
+        "should_contact": body.shouldContact,
+        "priority": body.priority,
+        "target_persona": body.targetPersona,
+        "prospect_name": body.prospectName,
+        "prospect_email": body.prospectEmail,
+        "prospect_title": body.prospectTitle,
+        "prospect_linkedin": body.prospectLinkedin,
+        "action": body.action,
+        "reason": body.reason,
+        "tech_stack": body.techStack,
+        "is_new": True,
+    }).execute()
+    if not res.data:
+        raise HTTPException(status_code=500, detail="Failed to create signal")
+    return {"signal": res.data[0]}
+
 @app.get("/api/actions")
 def get_actions():
     res = supabase.table("signals").select("*, accounts(*)").eq("should_contact", True).order("detected_at", desc=True).execute()
