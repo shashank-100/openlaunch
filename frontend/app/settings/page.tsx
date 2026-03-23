@@ -187,8 +187,8 @@ function SettingsContent() {
         <div>
           <h2 className="text-white/30 text-xs uppercase tracking-widest mb-5">AI Model</h2>
           <div className="bg-white/3 border border-white/8 rounded-xl p-5 flex items-center justify-between">
-            <span className="text-white/60 text-sm">Claude Sonnet</span>
-            <span className="text-white/20 text-xs">via Anthropic</span>
+            <span className="text-white/60 text-sm">GPT-4.1 mini</span>
+            <span className="text-white/20 text-xs">via OpenAI</span>
           </div>
         </div>
 
