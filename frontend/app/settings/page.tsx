@@ -30,20 +30,18 @@ const EMPTY_PERSONA: Persona = {
 function SettingsContent() {
   const router = useRouter();
   const params = useSearchParams();
-  const [calendarConnected, setCalendarConnected] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<{ jobsCreated: number; meetingsFound: number } | null>(null);
+  const [gmailConnected, setGmailConnected] = useState(false);
   const [toast, setToast] = useState('');
   const [persona, setPersona] = useState<Persona>(EMPTY_PERSONA);
   const [savingPersona, setSavingPersona] = useState(false);
 
   useEffect(() => {
-    if (params.get('calendar_connected') === 'true') {
-      setCalendarConnected(true);
-      showToast('Google Calendar connected!');
+    if (params.get('gmail_connected') === 'true') {
+      setGmailConnected(true);
+      showToast('Gmail connected! Inbox monitoring is active.');
     }
-    if (params.get('error') === 'calendar_connection_failed') {
-      showToast('Calendar connection failed. Check your Google OAuth credentials.');
+    if (params.get('gmail_error') === 'true') {
+      showToast('Gmail connection failed. Try again.');
     }
     loadPersona();
   }, [params]);
@@ -53,7 +51,10 @@ function SettingsContent() {
       const res = await fetch(`${BACKEND}/api/persona`);
       if (res.ok) {
         const data = await res.json();
-        if (data.persona) setPersona({ ...EMPTY_PERSONA, ...data.persona });
+        if (data.persona) {
+          setPersona({ ...EMPTY_PERSONA, ...data.persona });
+          if (data.persona.gmail_access_token) setGmailConnected(true);
+        }
       }
     } catch {}
   }
@@ -79,27 +80,8 @@ function SettingsContent() {
     setTimeout(() => setToast(''), 4000);
   }
 
-  function connectCalendar() {
-    window.location.href = `${BACKEND}/api/calendar/connect/google?userId=${DEMO_USER}`;
-  }
-
-  async function syncNow() {
-    setSyncing(true);
-    setSyncResult(null);
-    try {
-      const res = await fetch(`${BACKEND}/api/calendar/sync/${DEMO_USER}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ organizationId: '00000000-0000-0000-0000-000000000002' }),
-      });
-      const data = await res.json();
-      setSyncResult({ jobsCreated: data.jobsCreated || 0, meetingsFound: data.meetingsFound || 0 });
-      showToast(data.jobsCreated > 0 ? `${data.jobsCreated} jobs queued!` : 'No new meetings found.');
-    } catch {
-      showToast('Sync failed.');
-    } finally {
-      setSyncing(false);
-    }
+  function connectGmail() {
+    window.location.href = `${BACKEND}/api/gmail/connect`;
   }
 
   const field = (label: string, key: keyof Persona, placeholder: string, multiline = false) => (
@@ -178,38 +160,26 @@ function SettingsContent() {
           </div>
         </div>
 
-        {/* Calendar */}
+        {/* Gmail */}
         <div>
-          <h2 className="text-white/30 text-xs uppercase tracking-widest mb-5">Calendar</h2>
+          <h2 className="text-white/30 text-xs uppercase tracking-widest mb-5">Gmail</h2>
           <div className="bg-white/3 border border-white/8 rounded-xl p-5">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-3">
-                <div className={`w-2 h-2 rounded-full ${calendarConnected ? 'bg-green-400' : 'bg-white/20'}`} />
-                <span className="text-white text-sm">Google Calendar</span>
+                <div className={`w-2 h-2 rounded-full ${gmailConnected ? 'bg-green-400' : 'bg-white/20'}`} />
+                <span className="text-white text-sm">Gmail</span>
               </div>
-              {calendarConnected ? (
+              {gmailConnected ? (
                 <span className="text-green-400/80 text-xs">Connected</span>
               ) : (
-                <button onClick={connectCalendar} className="bg-white text-black text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-white/90 transition">
+                <button onClick={connectGmail} className="bg-white text-black text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-white/90 transition">
                   Connect
                 </button>
               )}
             </div>
             <p className="text-white/30 text-xs ml-5">
-              {calendarConnected ? 'Auto-researches attendees 24h before meetings.' : 'Connect to trigger research when meetings are scheduled.'}
+              {gmailConnected ? 'Inbox is being monitored. Hot leads trigger Telegram alerts.' : 'Connect to monitor inbox for hot leads.'}
             </p>
-            {calendarConnected && (
-              <div className="mt-4 ml-5">
-                <button onClick={syncNow} disabled={syncing} className="text-white/50 hover:text-white text-xs border border-white/15 hover:border-white/30 rounded px-3 py-1.5 transition disabled:opacity-40">
-                  {syncing ? 'Syncing...' : 'Sync now'}
-                </button>
-                {syncResult && (
-                  <p className="text-white/30 text-xs mt-2">
-                    {syncResult.meetingsFound} meetings · {syncResult.jobsCreated} jobs queued
-                  </p>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
@@ -217,8 +187,8 @@ function SettingsContent() {
         <div>
           <h2 className="text-white/30 text-xs uppercase tracking-widest mb-5">AI Model</h2>
           <div className="bg-white/3 border border-white/8 rounded-xl p-5 flex items-center justify-between">
-            <span className="text-white/60 text-sm">GPT-4o</span>
-            <span className="text-white/20 text-xs">via OpenAI</span>
+            <span className="text-white/60 text-sm">Claude Sonnet</span>
+            <span className="text-white/20 text-xs">via Anthropic</span>
           </div>
         </div>
 
