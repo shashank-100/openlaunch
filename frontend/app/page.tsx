@@ -5,43 +5,48 @@ import { useRouter } from 'next/navigation';
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backend-production-d5926.up.railway.app';
 
+const PLACEHOLDER_EXAMPLES = [
+  "We sell data integration tools for modern data teams",
+  "DevOps monitoring for fast-growing startups",
+  "AI interview automation for hiring teams",
+  "Revenue intelligence for B2B sales teams",
+];
+
 export default function Home() {
   const router = useRouter();
-  const [company, setCompany] = useState('');
+  const [pitch, setPitch] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+
+  // Rotate placeholder every 3 seconds
+  useState(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIndex((i) => (i + 1) % PLACEHOLDER_EXAMPLES.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!company.trim()) return;
+    if (!pitch.trim()) return;
+
     setLoading(true);
-    setError('');
+
     try {
-      // Add to accounts if not already there
-      const res = await fetch(`${BACKEND}/api/accounts`, {
+      const res = await fetch(`${BACKEND}/api/pitch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyName: company.trim() }),
+        body: JSON.stringify({ pitch: pitch.trim() }),
       });
 
       if (!res.ok) {
-        throw new Error(`Failed to add account: ${res.status}`);
+        throw new Error(`Failed to start discovery: ${res.status}`);
       }
 
-      const { account } = await res.json();
-
-      // Trigger immediate scan
-      const scanRes = await fetch(`${BACKEND}/api/accounts/${account.id}/scan`, { method: 'POST' });
-
-      if (!scanRes.ok) {
-        throw new Error(`Failed to start scan: ${scanRes.status}`);
-      }
-
-      // Go to feed to see result
+      // Redirect to results
       router.push('/feed');
     } catch (err: any) {
-      console.error('Research failed:', err);
-      setError(err.message || 'Failed to start research. Please try again.');
+      console.error('Discovery failed:', err);
       setLoading(false);
     }
   }
@@ -54,83 +59,55 @@ export default function Home() {
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-white/[0.02] blur-3xl" />
       </div>
 
-      <div className="relative w-full max-w-sm">
+      <div className="relative w-full max-w-xl">
 
-        {/* Logo */}
+        {/* Hero Section */}
         <div className="text-center mb-12">
-          <p className="text-white/15 text-[10px] tracking-[0.4em] uppercase mb-4">INTAKE</p>
-          <h1 className="text-white text-3xl font-light tracking-tight leading-tight">
-            Know when to reach out.<br />
-            <span className="text-white/40">Before anyone else does.</span>
+          <h1 className="text-4xl font-light text-white tracking-tight mb-4 leading-tight">
+            Find companies already<br />showing intent to buy your product
           </h1>
+          <p className="text-base text-white/40 max-w-lg mx-auto">
+            Describe what you sell — GEODO finds high-intent companies, explains why they need you,
+            and shows exactly how to reach them.
+          </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-2">
+        {/* Input */}
+        <form onSubmit={handleSubmit} className="mb-3">
           <div className="relative">
             <input
               type="text"
-              placeholder="Enter a company name"
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
+              placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
+              value={pitch}
+              onChange={(e) => setPitch(e.target.value)}
               autoFocus
-              className="w-full bg-white/[0.04] border border-white/10 text-white placeholder-white/20 rounded-xl px-5 py-4 text-sm focus:outline-none focus:border-white/25 focus:bg-white/[0.06] transition"
+              className="w-full bg-white/[0.04] border border-white/10 text-white placeholder-white/20 rounded-xl px-6 py-5 text-base focus:outline-none focus:border-white/25 focus:bg-white/[0.06] transition"
             />
           </div>
-          {error && (
-            <div className="text-red-400 text-xs px-2 py-1 bg-red-500/10 border border-red-500/20 rounded-lg">
-              {error}
-            </div>
-          )}
+
           <button
             type="submit"
-            disabled={loading || !company.trim()}
-            className="w-full bg-white text-black font-medium rounded-xl px-5 py-4 text-sm hover:bg-white/90 active:scale-[0.99] transition disabled:opacity-25 disabled:cursor-not-allowed"
+            disabled={loading || !pitch.trim()}
+            className="w-full mt-3 bg-white text-black font-medium rounded-xl px-6 py-5 text-base hover:bg-white/90 active:scale-[0.99] transition disabled:opacity-25 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="w-3.5 h-3.5 border border-black/30 border-t-black rounded-full animate-spin" />
-                Queuing research...
+                <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                Finding companies...
               </span>
-            ) : 'Research this company →'}
+            ) : (
+              'Find Opportunities →'
+            )}
           </button>
         </form>
 
-        {/* Examples */}
-        <div className="mt-5 flex items-center gap-2 flex-wrap justify-center">
-          <span className="text-white/20 text-[10px]">Try:</span>
-          {['Stripe', 'Notion', 'Vercel', 'Linear'].map(name => (
-            <button
-              key={name}
-              onClick={() => setCompany(name)}
-              className="text-white/25 text-[10px] hover:text-white/50 transition underline underline-offset-2"
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-
-        {/* Divider */}
-        <div className="mt-10 mb-6 border-t border-white/5" />
-
-        {/* Nav */}
-        <div className="flex items-center justify-center gap-6">
-          <button
-            onClick={() => router.push('/feed')}
-            className="text-white/25 text-xs hover:text-white/60 transition"
-          >
-            Signal Feed
-          </button>
-          <span className="text-white/10 text-xs">·</span>
-          <button
-            onClick={() => router.push('/accounts')}
-            className="text-white/25 text-xs hover:text-white/60 transition"
-          >
-            Accounts
-          </button>
-        </div>
+        {/* Trust Text */}
+        <p className="text-center text-sm text-white/20">
+          No setup. No manual research. Results in seconds.
+        </p>
 
       </div>
+
     </main>
   );
 }

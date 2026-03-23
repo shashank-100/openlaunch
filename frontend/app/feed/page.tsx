@@ -10,12 +10,21 @@ interface Signal {
   signal_type: string;
   signal_summary: string;
   pain_point: string;
+  product_insight?: string;
+  opportunity?: string;
+  relevance_score?: number;
   outreach_angle: string;
+  prospect_name: string | null;
+  prospect_email: string | null;
   email_subject: string;
   email_body: string;
   source_url: string | null;
   is_new: boolean;
   detected_at: string;
+  priority?: 'high' | 'medium' | 'low';
+  action?: string;
+  reason?: string;
+  tech_stack?: string[];
   accounts: { id: string; company_name: string } | null;
 }
 
@@ -60,8 +69,8 @@ export default function FeedPage() {
 
         {/* Nav */}
         <div className="flex items-center justify-between mb-10 text-white/20 text-xs">
-          <button onClick={() => router.push('/accounts')} className="hover:text-white/50 transition">accounts</button>
-          <span className="tracking-widest uppercase">INTAKE</span>
+          <button onClick={() => router.push('/')} className="hover:text-white/50 transition">← home</button>
+          <span className="tracking-widest uppercase">GEODO</span>
           <span className="text-white/10">signal feed</span>
         </div>
 
@@ -88,12 +97,11 @@ export default function FeedPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-white/25 text-sm mb-3">No signals yet</p>
-            <p className="text-white/15 text-xs mb-6">Add companies to monitor and they'll appear here</p>
             <button
-              onClick={() => router.push('/accounts')}
+              onClick={() => router.push('/')}
               className="text-white/40 text-xs border border-white/15 hover:border-white/30 rounded px-4 py-2 transition"
             >
-              add accounts →
+              find companies →
             </button>
           </div>
         ) : (
@@ -112,9 +120,14 @@ export default function FeedPage() {
                         <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                           style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}` }} />
                       )}
-                      <span className="text-white/40 text-[10px] tracking-wider uppercase">
+                      <span className="text-white/60 text-sm font-medium">
                         {signal.accounts?.company_name}
                       </span>
+                      {signal.relevance_score && signal.relevance_score >= 8 && (
+                        <span className="text-[9px] bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded border border-green-500/20">
+                          {signal.relevance_score}/10
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] px-1.5 py-0.5 rounded"
@@ -126,15 +139,48 @@ export default function FeedPage() {
                   </div>
 
                   {/* Signal summary */}
-                  <p className="text-white/85 text-sm mb-1">{signal.signal_summary}</p>
+                  <p className="text-white/85 text-sm mb-3">{signal.signal_summary}</p>
 
-                  {/* Outreach angle */}
-                  {signal.outreach_angle && (
-                    <p className="text-white/35 text-xs mb-3">→ {signal.outreach_angle}</p>
+                  {/* Tech Stack */}
+                  {signal.tech_stack && signal.tech_stack.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {signal.tech_stack.slice(0, 5).map(tech => (
+                        <span key={tech} className="text-[8px] bg-white/5 text-white/40 px-1.5 py-0.5 rounded border border-white/5 uppercase tracking-tighter">
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Intelligence Sections */}
+                  {signal.product_insight && (
+                    <div className="mb-2 px-3 py-2 bg-blue-500/5 border-l-2 border-blue-500/30 rounded-r-lg">
+                      <p className="text-blue-300/60 text-[9px] tracking-widest uppercase mb-1">Why this matters</p>
+                      <p className="text-blue-200/80 text-[11px] leading-relaxed">{signal.product_insight}</p>
+                    </div>
+                  )}
+
+                  {signal.opportunity && (
+                    <div className="mb-2 px-3 py-2 bg-purple-500/5 border-l-2 border-purple-500/30 rounded-r-lg">
+                      <p className="text-purple-300/60 text-[9px] tracking-widest uppercase mb-1">Opportunity</p>
+                      <p className="text-purple-200/80 text-[11px] leading-relaxed">{signal.opportunity}</p>
+                    </div>
+                  )}
+
+                  {/* Prospect Info */}
+                  {signal.prospect_name && (
+                    <div className="mb-2 px-3 py-2 bg-green-500/5 border-l-2 border-green-500/30 rounded-r-lg">
+                      <p className="text-green-300/60 text-[9px] tracking-widest uppercase mb-1">Contact</p>
+                      <p className="text-green-200/80 text-[11px]">
+                        <strong>{signal.prospect_name}</strong>
+                        {signal.prospect_email && <span className="text-green-200/50"> ({signal.prospect_email})</span>}
+                      </p>
+                      {signal.action && <p className="text-green-200/70 text-[11px] mt-1">{signal.action}</p>}
+                    </div>
                   )}
 
                   {/* Action buttons */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mt-3">
                     <button
                       onClick={() => router.push(`/brief/${signal.id}`)}
                       className="flex-1 text-xs py-2 rounded-lg border border-white/15 text-white/60 hover:border-white/30 hover:text-white/90 transition"
@@ -145,7 +191,7 @@ export default function FeedPage() {
                       onClick={() => router.push(`/send/${signal.id}`)}
                       className="flex-1 text-xs py-2 rounded-lg bg-white text-black font-medium hover:bg-white/90 transition"
                     >
-                      Send Email
+                      Act on this →
                     </button>
                   </div>
                 </div>

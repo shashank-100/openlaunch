@@ -5,24 +5,26 @@ import { useParams, useRouter } from 'next/navigation';
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backend-production-d5926.up.railway.app';
 
-interface Brief {
-  id: string;
-  signal_id: string;
-  account_id: string;
-  what_they_do: string;
-  the_signal: string;
-  the_pain: string;
-  your_angle: string;
-  the_email: string;
-  created_at: string;
-}
-
 interface Signal {
   id: string;
   signal_type: string;
   signal_summary: string;
+  pain_point: string;
+  outreach_angle: string;
   email_subject: string;
   email_body: string;
+  tech_stack?: string[];
+  product_insight?: string;
+  opportunity?: string;
+  action?: string;
+  reason?: string;
+  priority?: string;
+  should_contact?: boolean;
+  prospect_name?: string;
+  prospect_email?: string;
+  prospect_title?: string;
+  prospect_linkedin?: string;
+  relevance_score?: number;
   accounts: { company_name: string } | null;
 }
 
@@ -38,7 +40,6 @@ const TYPE_COLOR: Record<string, string> = {
 export default function BriefPage() {
   const { briefId } = useParams<{ briefId: string }>();
   const router = useRouter();
-  const [brief, setBrief] = useState<Brief | null>(null);
   const [signal, setSignal] = useState<Signal | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -46,28 +47,19 @@ export default function BriefPage() {
   useEffect(() => {
     async function load() {
       try {
-        // briefId could be a brief ID or signal ID — backend handles both
-        const [briefRes, signalRes] = await Promise.all([
-          fetch(`${BACKEND}/api/briefs/${briefId}`),
-          fetch(`${BACKEND}/api/signals/${briefId}`),
-        ]);
-        if (briefRes.ok) {
-          const { brief: b } = await briefRes.json();
-          setBrief(b);
-        }
-        if (signalRes.ok) {
-          const { signal: s } = await signalRes.json();
+        const res = await fetch(`${BACKEND}/api/signals/${briefId}`);
+        if (res.ok) {
+          const { signal: s } = await res.json();
           setSignal(s);
         }
       } catch {}
-      finally { setLoading(false); }
+      setLoading(false);
     }
     load();
   }, [briefId]);
 
   function copyEmail() {
-    const emailText = brief?.the_email || `${signal?.email_subject}\n\n${signal?.email_body}`;
-    navigator.clipboard.writeText(emailText);
+    navigator.clipboard.writeText(`Subject: ${signal?.email_subject}\n\n${signal?.email_body}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -83,11 +75,11 @@ export default function BriefPage() {
     );
   }
 
-  if (!brief && !signal) {
+  if (!signal) {
     return (
       <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="text-center">
-          <p className="text-white/30 text-sm font-mono">Brief not found</p>
+          <p className="text-white/30 text-sm font-mono">Signal not found</p>
           <button onClick={() => router.push('/feed')} className="text-white/20 text-xs mt-4 hover:text-white/40 transition">← back to feed</button>
         </div>
       </main>
@@ -106,66 +98,92 @@ export default function BriefPage() {
             className="text-[10px] px-2 py-0.5 rounded"
             style={{ color, backgroundColor: `${color}18`, border: `1px solid ${color}30` }}
           >
-            {signal?.signal_type}
+            {signal.signal_type}
           </span>
         </div>
 
-        {/* Company header */}
+        {/* Company + score */}
         <div className="mb-8">
-          <p className="text-white/30 text-[10px] tracking-[0.25em] uppercase mb-1">{companyName}</p>
-          <p className="text-white/80 text-base leading-snug">{signal?.signal_summary}</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-white/30 text-[10px] tracking-[0.25em] uppercase">{companyName}</p>
+            {signal.relevance_score && (
+              <span className="text-[10px] text-white/30">{signal.relevance_score}/10 relevance</span>
+            )}
+          </div>
+          <p className="text-white/80 text-base leading-snug mb-3">{signal.signal_summary}</p>
+          {signal.tech_stack && signal.tech_stack.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {signal.tech_stack.map(tech => (
+                <span key={tech} className="text-[9px] bg-white/5 text-white/40 px-2 py-0.5 rounded border border-white/10 uppercase tracking-widest">
+                  {tech}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="text-white/10 text-xs mb-8">{'─'.repeat(52)}</div>
 
-        {brief ? (
-          <div className="space-y-7">
+        <div className="space-y-7">
 
-            {/* Section 1 */}
+          {/* Why it matters */}
+          {signal.product_insight && (
             <div>
-              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">What They Do</p>
-              <p className="text-white/70 text-sm leading-relaxed">{brief.what_they_do}</p>
+              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">Why This Matters</p>
+              <p className="text-white/70 text-sm leading-relaxed">{signal.product_insight}</p>
             </div>
+          )}
 
-            {/* Section 2 */}
+          {/* The opportunity */}
+          {signal.opportunity && (
             <div>
-              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">The Signal</p>
-              <p className="text-white/70 text-sm leading-relaxed">{brief.the_signal}</p>
+              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">The Opportunity</p>
+              <p style={{ color }} className="text-sm leading-relaxed">{signal.opportunity}</p>
             </div>
+          )}
 
-            {/* Section 3 */}
+          {/* The pain */}
+          {signal.pain_point && (
             <div>
-              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">The Pain</p>
-              <p className="text-white/70 text-sm leading-relaxed">{brief.the_pain}</p>
+              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">Their Pain</p>
+              <p className="text-white/70 text-sm leading-relaxed italic border-l border-white/10 pl-4">{signal.pain_point}</p>
             </div>
+          )}
 
-            {/* Section 4 */}
+          {/* Who to contact */}
+          {signal.prospect_name && (
             <div>
-              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">Your Angle</p>
-              <p style={{ color }} className="text-sm leading-relaxed font-medium">{brief.your_angle}</p>
-            </div>
-
-            {/* Section 5 — The Email */}
-            <div>
-              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">The Email</p>
-              <div className="bg-white/[0.04] border border-white/10 rounded-xl p-4">
-                <pre className="text-white/70 text-xs leading-relaxed whitespace-pre-wrap font-mono">{brief.the_email}</pre>
+              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">Who To Contact</p>
+              <div className="space-y-1">
+                <p className="text-white/70 text-sm">{signal.prospect_name} — <span className="text-white/40">{signal.prospect_title}</span></p>
+                {signal.prospect_email && (
+                  <p className="text-white/40 text-xs">{signal.prospect_email}</p>
+                )}
+                {signal.prospect_linkedin && (
+                  <a href={signal.prospect_linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-400/50 text-xs hover:text-blue-400/80 transition">LinkedIn →</a>
+                )}
               </div>
             </div>
+          )}
 
-          </div>
-        ) : (
-          // Signal has no brief yet — show email draft from signal
-          <div className="space-y-7">
+          {/* Action */}
+          {signal.action && (
             <div>
-              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">The Email</p>
-              <div className="bg-white/[0.04] border border-white/10 rounded-xl p-4">
-                <p className="text-white/50 text-[10px] mb-2">Subject: {signal?.email_subject}</p>
-                <pre className="text-white/70 text-xs leading-relaxed whitespace-pre-wrap font-mono">{signal?.email_body}</pre>
-              </div>
+              <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">Next Action</p>
+              <p className="text-white/70 text-sm leading-relaxed">{signal.action}</p>
+            </div>
+          )}
+
+          {/* The Email */}
+          <div>
+            <p className="text-white/25 text-[10px] tracking-[0.2em] uppercase mb-2">Draft Email</p>
+            <div className="bg-white/[0.04] border border-white/10 rounded-xl p-4">
+              <p className="text-white/40 text-[10px] mb-3 pb-3 border-b border-white/5">Subject: {signal.email_subject}</p>
+              <pre className="text-white/70 text-xs leading-relaxed whitespace-pre-wrap font-mono">{signal.email_body}</pre>
             </div>
           </div>
-        )}
+
+        </div>
 
         {/* Actions */}
         <div className="flex gap-3 mt-10">
@@ -176,7 +194,7 @@ export default function BriefPage() {
             {copied ? 'Copied!' : 'Copy Email'}
           </button>
           <button
-            onClick={() => router.push(`/send/${signal?.id || briefId}`)}
+            onClick={() => router.push(`/send/${signal.id}`)}
             className="flex-1 py-3 text-xs bg-white text-black font-medium rounded-xl hover:bg-white/90 transition"
           >
             Send Email
