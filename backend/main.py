@@ -281,8 +281,33 @@ async def gmail_callback(code: str = None, error: str = None):
 def get_gmail_tokens():
     res = supabase.table("personas").select("gmail_access_token,gmail_refresh_token").eq("user_id", DEMO_USER_ID).limit(1).execute()
     if not res.data:
-        return {"access_token": None, "refresh_token": None}
+        return {"gmail_access_token": None, "gmail_refresh_token": None}
     return res.data[0]
+
+@app.post("/api/gmail/refresh")
+async def gmail_refresh():
+    res = supabase.table("personas").select("gmail_refresh_token").eq("user_id", DEMO_USER_ID).limit(1).execute()
+    if not res.data or not res.data[0].get("gmail_refresh_token"):
+        raise HTTPException(status_code=400, detail="No refresh token stored. Reconnect Gmail.")
+    refresh_token = res.data[0]["gmail_refresh_token"]
+    client_id = os.getenv("GMAIL_CLIENT_ID", "")
+    client_secret = os.getenv("GMAIL_CLIENT_SECRET", "")
+    async with httpx.AsyncClient() as client:
+        r = await client.post("https://oauth2.googleapis.com/token", data={
+            "refresh_token": refresh_token,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "grant_type": "refresh_token",
+        })
+    tokens = r.json()
+    if "access_token" not in tokens:
+        raise HTTPException(status_code=400, detail=f"Token refresh failed: {tokens}")
+    new_token = tokens["access_token"]
+    supabase.table("personas").update({
+        "gmail_access_token": new_token,
+        "updated_at": datetime.now(UTC).isoformat(),
+    }).eq("user_id", DEMO_USER_ID).execute()
+    return {"access_token": new_token}
 
 if __name__ == "__main__":
     import uvicorn
