@@ -22,6 +22,9 @@ export default function SendEmailPage() {
         if (signal) {
           setSubject(signal.email_subject || '');
           setBody(signal.email_body || '');
+          if (signal.prospect_email) {
+            setToEmail(signal.prospect_email);
+          }
         }
       })
       .catch(() => {})
@@ -36,7 +39,7 @@ export default function SendEmailPage() {
       const res = await fetch(`${BACKEND}/api/outreach/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ signalId, toEmail, subject, body }),
+        body: JSON.stringify({ signalId, to: toEmail, subject, body }),
       });
       if (res.ok) setSent(true);
     } finally {
