@@ -240,23 +240,50 @@ def rate_brief(brief_id: str, body: dict):
     return {"success": True}
 
 @app.post("/api/outreach/send")
-def send_outreach(body: OutreachSend):
-    # Send via Resend
-    try:
-        resend.Emails.send({
-            "from": os.getenv("RESEND_FROM_EMAIL", "onboarding@resend.dev"),
-            "to": body.to,
-            "subject": body.subject,
-            "text": body.body
+async def send_outreach(body: OutreachSend):
+    # Get fresh Gmail access token
+    persona = supabase.table("personas").select("gmail_access_token,gmail_refresh_token").eq("user_id", DEMO_USER_ID).limit(1).execute()
+    if not persona.data or not persona.data[0].get("gmail_refresh_token"):
+        raise HTTPException(status_code=400, detail="Gmail not connected. Go to /settings to connect.")
+
+    # Refresh token
+    client_id = os.getenv("GMAIL_CLIENT_ID", "")
+    client_secret = os.getenv("GMAIL_CLIENT_SECRET", "")
+    async with httpx.AsyncClient() as client:
+        r = await client.post("https://oauth2.googleapis.com/token", data={
+            "refresh_token": persona.data[0]["gmail_refresh_token"],
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "grant_type": "refresh_token",
         })
-    except Exception as e:
-        print(f"Resend error: {e}")
+    tokens = r.json()
+    access_token = tokens.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=400, detail="Gmail token refresh failed.")
+
+    # Build RFC 2822 email and base64 encode it
+    import base64
+    from email.mime.text import MIMEText
+    msg = MIMEText(body.body)
+    msg["To"] = body.to
+    msg["Subject"] = body.subject
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+
+    # Send via Gmail API
+    async with httpx.AsyncClient() as client:
+        res = await client.post(
+            "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={"raw": raw},
+        )
+    if res.status_code not in (200, 201):
+        raise HTTPException(status_code=500, detail=f"Gmail send failed: {res.text}")
 
     supabase.table("signals").update({"is_new": False}).eq("id", body.signalId).execute()
-    supabase.table("outreach").insert({"signal_id": body.signalId, "user_id": DEMO_USER_ID, "to_email": body.to, "subject": body.subject, "body": body.body}).execute()
+    supabase.table("outreach").insert({"signal_id": body.signalId, "to_email": body.to, "subject": body.subject, "body": body.body}).execute()
     return {"success": True}
 
-GMAIL_SCOPES = "https://www.googleapis.com/auth/gmail.readonly"
+GMAIL_SCOPES = "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly"
 
 @app.get("/api/gmail/connect")
 def gmail_connect():
