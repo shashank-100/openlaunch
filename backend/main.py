@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from supabase import create_client, Client
 import os
@@ -7,6 +8,8 @@ import json
 import uuid
 from datetime import datetime, UTC
 import resend
+import urllib.parse
+import httpx
 
 app = FastAPI()
 
@@ -222,6 +225,56 @@ def send_outreach(body: OutreachSend):
     supabase.table("signals").update({"is_new": False}).eq("id", body.signalId).execute()
     supabase.table("outreach").insert({"signal_id": body.signalId, "user_id": DEMO_USER_ID, "to_email": body.to, "subject": body.subject, "body": body.body}).execute()
     return {"success": True}
+
+GMAIL_SCOPES = "https://www.googleapis.com/auth/gmail.readonly"
+
+@app.get("/api/gmail/connect")
+def gmail_connect():
+    client_id = os.getenv("GMAIL_CLIENT_ID", "")
+    redirect_uri = os.getenv("GMAIL_REDIRECT_URI", "https://backend-production-d5926.up.railway.app/api/gmail/callback")
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": GMAIL_SCOPES,
+        "access_type": "offline",
+        "prompt": "consent",
+    }
+    url = "https://accounts.google.com/o/oauth2/auth?" + urllib.parse.urlencode(params)
+    return RedirectResponse(url)
+
+@app.get("/api/gmail/callback")
+async def gmail_callback(code: str = None, error: str = None):
+    if error or not code:
+        return RedirectResponse("https://geodo-frontend-production.up.railway.app/settings?gmail_error=true")
+    client_id = os.getenv("GMAIL_CLIENT_ID", "")
+    client_secret = os.getenv("GMAIL_CLIENT_SECRET", "")
+    redirect_uri = os.getenv("GMAIL_REDIRECT_URI", "https://backend-production-d5926.up.railway.app/api/gmail/callback")
+    async with httpx.AsyncClient() as client:
+        res = await client.post("https://oauth2.googleapis.com/token", data={
+            "code": code,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+        })
+    tokens = res.json()
+    access_token = tokens.get("access_token", "")
+    refresh_token = tokens.get("refresh_token", "")
+    # Store tokens in DB for the demo user
+    supabase.table("personas").update({
+        "gmail_access_token": access_token,
+        "gmail_refresh_token": refresh_token,
+        "updated_at": datetime.now(UTC).isoformat(),
+    }).eq("user_id", DEMO_USER_ID).execute()
+    return RedirectResponse("https://geodo-frontend-production.up.railway.app/settings?gmail_connected=true")
+
+@app.get("/api/gmail/tokens")
+def get_gmail_tokens():
+    res = supabase.table("personas").select("gmail_access_token,gmail_refresh_token").eq("user_id", DEMO_USER_ID).limit(1).execute()
+    if not res.data:
+        return {"access_token": None, "refresh_token": None}
+    return res.data[0]
 
 if __name__ == "__main__":
     import uvicorn
