@@ -702,7 +702,7 @@ async def list_signal_replies(limit: int = 50):
 @app.get("/api/pipeline")
 async def get_pipeline():
     pending  = supabase.table("signal_outreach").select("*").eq("user_id", DEMO_USER_ID).in_("approval_status",["pending","edited"]).order("created_at",desc=True).limit(50).execute()
-    sent     = supabase.table("signal_outreach").select("*").eq("user_id", DEMO_USER_ID).eq("approval_status","approved").is_("gmail_thread_id","not.null").order("sent_at",desc=True).limit(50).execute()
+    sent     = supabase.table("signal_outreach").select("*").eq("user_id", DEMO_USER_ID).eq("approval_status","approved").not_.is_("gmail_thread_id","null").order("sent_at",desc=True).limit(50).execute()
     replied  = supabase.table("signal_replies").select("*, signal_outreach(company_name)").in_("reply_intent",["interested","meeting_request","question"]).order("received_at",desc=True).limit(50).execute()
     meetings = supabase.table("meeting_bookings").select("*").eq("user_id", DEMO_USER_ID).order("created_at",desc=True).limit(20).execute()
     return {"pipeline": {"pending": pending.data or [], "sent": sent.data or [], "replied": replied.data or [], "closed": meetings.data or []}}
@@ -834,7 +834,7 @@ async def run_scan():
     p_res = supabase.table("personas").select("*").eq("user_id", DEMO_USER_ID).limit(1).execute()
     persona = p_res.data[0] if p_res.data else {}
     pitch = persona.get("pitch") or ""
-    sender_name = persona.get("name") or persona.get("full_name") or ""
+    sender_name = persona.get("name") or ""
     auto_send = persona.get("auto_send", False)
     if not pitch:
         return {"error": "No pitch set — go to Settings", "scanned": 0}
@@ -1124,9 +1124,9 @@ async def run_inbox():
 @app.post("/api/signal-outreach/ingest")
 async def ingest_signal(body: dict):
     """OpenClaw researched a signal natively — save it to DB and schedule follow-ups."""
-    persona_res = supabase.table("personas").select("name,full_name").eq("user_id", DEMO_USER_ID).limit(1).execute()
+    persona_res = supabase.table("personas").select("name").eq("user_id", DEMO_USER_ID).limit(1).execute()
     persona = persona_res.data[0] if persona_res.data else {}
-    sender_name = persona.get("name") or persona.get("full_name") or "there"
+    sender_name = persona.get("name") or "there"
 
     email_body = body.get("email_body", "")
     if sender_name:
