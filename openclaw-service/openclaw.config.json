@@ -6,9 +6,18 @@
   },
   "agents": [
     {
+      "id": "full-outreach-agent",
+      "name": "Full Outreach Agent",
+      "skill": "full-outreach",
+      "provider": "openai",
+      "model": "gpt-5-mini-2025-08-07",
+      "tools": ["web_search", "browser"],
+      "memory": false
+    },
+    {
       "id": "intake-researcher",
       "name": "Intake Research Agent",
-      "skill": "intake-research",
+      "skill": "full-outreach",
       "provider": "openai",
       "model": "gpt-5-mini-2025-08-07",
       "tools": ["web_search", "browser"],
@@ -23,6 +32,17 @@
   "search": {
     "tavily": {
       "apiKey": "${TAVILY_API_KEY}"
+    }
+  },
+  "delivery": {
+    "telegram": {
+      "botToken": "${TELEGRAM_BOT_TOKEN}",
+      "chatId": "${TELEGRAM_CHAT_ID}"
+    },
+    "email": {
+      "provider": "resend",
+      "apiKey": "${RESEND_API_KEY}",
+      "from": "outreach@geodo.ai"
     }
   }
 }
