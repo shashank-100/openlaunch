@@ -866,7 +866,9 @@ async def run_scan():
 
             # Validate GPT-generated email before using it
             prospect_email = result.get("prospect_email", "").strip()
-            if not prospect_email or prospect_email.count("@") != 1 or "." not in prospect_email.split("@")[-1]:
+            # Strip GPT annotations like "(inferred)", "(guessed)", etc.
+            prospect_email = prospect_email.split(" ")[0].strip("()")
+            if not prospect_email or prospect_email.count("@") != 1 or "." not in prospect_email.split("@")[-1] or " " in prospect_email:
                 prospect_email = ""
 
             # Replace GPT placeholder with real sender name
