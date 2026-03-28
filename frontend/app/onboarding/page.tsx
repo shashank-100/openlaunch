@@ -51,9 +51,9 @@ export default function OnboardingPage() {
   const canContinueStep2 = icpIndustry && icpSize && icpRole && icpPain;
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" }}>
 
-      <div style={{ width: '100%', maxWidth: 480, background: '#fff', borderRadius: 20, padding: '40px 36px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+      <div style={{ width: '100%', maxWidth: 680 }}>
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
