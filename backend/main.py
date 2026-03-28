@@ -694,6 +694,17 @@ async def reject_signal(signal_id: str):
     supabase.table("signal_outreach").update({"approval_status": "rejected"}).eq("id", signal_id).execute()
     return {"success": True}
 
+@app.post("/api/signal-outreach/{signal_id}/schedule-followups")
+async def schedule_followups(signal_id: str):
+    res = supabase.table("signal_outreach").select("recipient_email,email_subject").eq("id", signal_id).limit(1).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Signal not found")
+    signal = res.data[0]
+    if not signal.get("recipient_email"):
+        return {"success": False, "error": "No recipient email"}
+    _schedule_follow_ups(signal_id, signal["recipient_email"], signal.get("email_subject", ""))
+    return {"success": True}
+
 @app.get("/api/signal-replies")
 async def list_signal_replies(limit: int = 50):
     res = supabase.table("signal_replies").select("*, signal_outreach(company_name,email_subject)").order("received_at", desc=True).limit(limit).execute()
