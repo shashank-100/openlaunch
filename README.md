@@ -23,25 +23,26 @@ GEODO eliminates manual prospecting by automating the entire research-to-outreac
 ```
 geodo/
 ├── backend/              # FastAPI server (Python)
-│   ├── main.py          # API entry, job dispatch, pitch handling
+│   ├── main.py          # API entry, data layer, Gmail integration
 │   └── requirements.txt
 │
-├── openclaw-daemon/      # OpenClaw research engine (TypeScript)
-│   ├── src/
-│   │   ├── index.ts     # Worker daemon (BullMQ)
-│   │   └── openclawClient.ts # Research & Discovery agents
-│   └── package.json
+├── openclaw-service/     # OpenClaw skills & crons
+│   ├── skills/
+│   │   ├── signal-scanner/   # Discovers companies with buying signals
+│   │   ├── follow-up/        # Generates personalized follow-ups
+│   │   └── inbox-monitor/    # Monitors Gmail, classifies replies
+│   └── HEARTBEAT.md     # Health monitoring instructions
 │
 ├── frontend/             # Next.js dashboard (TypeScript)
 │   ├── app/
-│   │   ├── page.tsx     # "Find Leads" Landing page
-│   │   ├── feed/        # Signal Feed with Product Fit insights
-│   │   └── accounts/    # Target account management
+│   │   ├── dashboard/   # Inbox, Sent, Replies, Chat sections
+│   │   ├── settings/    # Persona, Gmail, preferences
+│   │   └── api/chat/    # AI chat with pipeline context
 │   └── package.json
 │
 ├── database/
 │   ├── schema.sql       # Base schema
-│   └── migration_pitch.sql # Product-led discovery updates
+│   └── RUN_THIS_IN_SUPABASE.sql # Email intelligence migrations
 │
 └── .env.example         # Environment variables template
 ```
@@ -52,14 +53,13 @@ geodo/
 
 | Layer | Technology | Why |
 |-------|-----------|-----|
-| **Agent Core** | OpenClaw | Live web research, zero API dependency |
+| **Agent Core** | OpenClaw | Autonomous AI agents with cron scheduling |
 | **Discovery** | Tavily Search | Real-time web search for company discovery |
-| **LLM** | GPT-4o / GPT-5-mini | High-quality signal mapping and outreach |
-| **Job Queue** | Redis + BullMQ | Concurrent jobs, retries, priority handling |
-| **Backend** | Python + FastAPI | High-performance API, easy AI integration |
+| **LLM** | GPT-4o / GPT-5-mini | Signal mapping, outreach, and reply handling |
+| **Backend** | Python + FastAPI | Thin data layer + Gmail API integration |
 | **Database** | Supabase (PostgreSQL) | Persistence, RLS, real-time updates |
-| **Frontend** | Next.js + Tailwind | Clean, mono-styled dashboard |
-| **Delivery** | Resend / OpenClaw | Email, WhatsApp, and Telegram delivery |
+| **Frontend** | Next.js + Tailwind | Clean dashboard with inbox/chat UI |
+| **Delivery** | Gmail API / Telegram | Email outreach and instant notifications |
 
 ---
 
@@ -68,33 +68,42 @@ geodo/
 ### Prerequisites
 
 - Node.js 20+ & Python 3.10+
-- Redis (local or cloud)
+- OpenClaw CLI (`npm install -g openclaw`)
 - Supabase account
 - OpenAI & Tavily API keys
+- Gmail OAuth credentials
 
 ### 1. Set Up Database
-Run the schema and migrations in your Supabase SQL editor:
+Run migrations in your Supabase SQL editor:
 1. `database/schema.sql`
-2. `database/migration_v2.sql`
-3. `database/migration_pitch.sql`
+2. `database/RUN_THIS_IN_SUPABASE.sql`
 
-### 2. Start Services
+### 2. Set Up OpenClaw Crons
 
-**Backend:**
+**Install OpenClaw skills:**
+```bash
+cd openclaw-service/skills
+openclaw skill add signal-scanner
+openclaw skill add follow-up
+openclaw skill add inbox-monitor
+```
+
+**Create cron jobs:**
+```bash
+openclaw cron add --name geodo-signal-scan --every 2h --message "Run signal-scanner skill"
+openclaw cron add --name geodo-follow-ups --every 30m --message "Run follow-up skill"
+openclaw cron add --name geodo-inbox --every 30m --message "Run inbox-monitor skill"
+```
+
+### 3. Start Services
+
+**Backend (deploy to Railway):**
 ```bash
 cd backend
-pip install -r requirements.txt
-python main.py
+railway up
 ```
 
-**Daemon:**
-```bash
-cd openclaw-daemon
-npm install
-npm run dev
-```
-
-**Frontend:**
+**Frontend (local dev):**
 ```bash
 cd frontend
 npm install
@@ -105,21 +114,23 @@ npm run dev
 
 ## 🎯 Key Features
 
-- **"Find Leads" Mode:** Discover up to 10 high-fit companies in seconds from a single product description.
+- **Autonomous Discovery:** OpenClaw agents discover companies with buying signals every 2 hours using Tavily.
 - **Signal-to-Product Mapping:** AI-generated "Product Fit" insights for every detected event.
-- **Auto-Pilot Outreach:** Automated email delivery for high-priority signals.
-- **Multi-Channel Alerts:** Instant notifications via WhatsApp and Telegram for hot leads.
-- **Daily Scans:** Automated daily re-monitoring of all accounts in your list.
+- **Intelligent Outreach:** Personalized emails crafted based on your pitch, tone, and ICP preferences.
+- **Reply Intelligence:** Auto-classifies replies (interested, meeting request, objection) and drafts responses.
+- **Follow-up Sequences:** Automated Day 3/7/14 follow-ups with different angles.
+- **Multi-Channel Alerts:** Instant Telegram notifications for hot leads and replies.
+- **Chat Interface:** Ask AI about your pipeline, analytics, and next best actions.
 
 ---
 
 ## 🚢 Deployment
 
 GEODO is built for cloud deployment:
-- **Frontend:** Vercel
-- **Backend/Daemon:** Railway
+- **Frontend:** Vercel (or local)
+- **Backend:** Railway
 - **Database:** Supabase
-- **Cache:** Redis (Railway Add-on)
+- **OpenClaw:** Local gateway with remote agents
 
 ---
 
