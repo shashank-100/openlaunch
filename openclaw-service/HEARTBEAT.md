@@ -2,7 +2,7 @@
 
 ## Cadence-Based Checks
 
-Read `heartbeat-state.json`. Run whichever check is most overdue.
+Read `/Users/shashank/openlaunch/geodo/openclaw-service/heartbeat-state.json`. Run whichever check is most overdue.
 
 **Cadences:**
 - Backend health: every 30 min (anytime)
@@ -11,10 +11,10 @@ Read `heartbeat-state.json`. Run whichever check is most overdue.
 - Cron status: every 2 hours (anytime)
 
 **Process:**
-1. Load timestamps from heartbeat-state.json
+1. Load timestamps from `/Users/shashank/openlaunch/geodo/openclaw-service/heartbeat-state.json`
 2. Calculate which check is most overdue
 3. Run that check
-4. Update timestamp in state file
+4. Update timestamp in `/Users/shashank/openlaunch/geodo/openclaw-service/heartbeat-state.json`
 5. Report via Telegram if actionable, otherwise `HEARTBEAT_OK`
 
 ---

@@ -19,6 +19,11 @@ dist/
 # Logs
 *.log
 
+# Python cache
+__pycache__/
+*/__pycache__/
+*.pyc
+
 # OS files
 .DS_Store
 .vercel

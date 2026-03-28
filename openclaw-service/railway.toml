@@ -1,0 +1,6 @@
+[build]
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "openclaw gateway --port 8080 --bind lan --allow-unconfigured"
+restartPolicyType = "on_failure"

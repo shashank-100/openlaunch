@@ -32,6 +32,7 @@ interface Reply {
   received_at: string;
   response_body: string | null;
   response_approved: boolean;
+  response_sent_at: string | null;
   signal_outreach?: { company_name: string; email_subject: string };
 }
 
@@ -459,21 +460,17 @@ export default function App() {
 
               {(selected as Reply).response_body && (
                 <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #ebebea', overflow: 'hidden' }}>
-                  <div style={{ padding: '12px 22px', borderBottom: '1px solid #f4f4f3' }}>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Drafted Response</p>
+                  <div style={{ padding: '12px 22px', borderBottom: '1px solid #f4f4f3', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Auto-Response Sent</p>
+                    {(selected as Reply).response_approved && (
+                      <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        Sent
+                      </span>
+                    )}
                   </div>
                   <div style={{ padding: '18px 22px' }}>
-                    <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.85, whiteSpace: 'pre-wrap', marginBottom: 18 }}>{(selected as Reply).response_body}</p>
-                    {!(selected as Reply).response_approved && (
-                      <div style={{ display: 'flex', gap: 10 }}>
-                        <button style={{ flex: 1, background: '#18181b', color: '#fff', border: 'none', padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-                          ↑ Send Response
-                        </button>
-                        <button style={{ padding: '12px 22px', background: '#fff', color: '#9ca3af', border: '1px solid #e5e7eb', borderRadius: 12, fontSize: 14, cursor: 'pointer' }}>
-                          Skip
-                        </button>
-                      </div>
-                    )}
+                    <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.85, whiteSpace: 'pre-wrap' }}>{(selected as Reply).response_body}</p>
                   </div>
                 </div>
               )}

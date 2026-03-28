@@ -707,16 +707,9 @@ async def schedule_followups(signal_id: str):
 
 @app.get("/api/signal-replies")
 async def list_signal_replies(limit: int = 50):
-    res = supabase.table("signal_replies").select("*, signal_outreach(company_name,email_subject)").order("received_at", desc=True).limit(limit).execute()
+    res = supabase.table("signal_replies").select("*, signal_outreach(company_name,email_subject,gmail_thread_id)").order("received_at", desc=True).limit(limit).execute()
     return {"replies": res.data or []}
 
-@app.get("/api/pipeline")
-async def get_pipeline():
-    pending  = supabase.table("signal_outreach").select("*").eq("user_id", DEMO_USER_ID).in_("approval_status",["pending","edited"]).order("created_at",desc=True).limit(50).execute()
-    sent     = supabase.table("signal_outreach").select("*").eq("user_id", DEMO_USER_ID).eq("approval_status","approved").not_.is_("gmail_thread_id","null").order("sent_at",desc=True).limit(50).execute()
-    replied  = supabase.table("signal_replies").select("*, signal_outreach(company_name)").in_("reply_intent",["interested","meeting_request","question"]).order("received_at",desc=True).limit(50).execute()
-    meetings = supabase.table("meeting_bookings").select("*").eq("user_id", DEMO_USER_ID).order("created_at",desc=True).limit(20).execute()
-    return {"pipeline": {"pending": pending.data or [], "sent": sent.data or [], "replied": replied.data or [], "closed": meetings.data or []}}
 
 # ── ENGINE ENDPOINTS — called by OpenClaw skills via cron ─────────────────────
 
@@ -1106,16 +1099,15 @@ async def run_inbox():
                         "response_subject": f"Re: {signal.get('email_subject', '')}",
                     }).eq("id", reply_db_id).execute()
 
-                    # Auto-send if enabled
-                    if auto_send:
-                        sent_msg = await _gmail_send(token, signal.get("recipient_email", ""),
-                            f"Re: {signal.get('email_subject', '')}",
-                            response_body, thread_id)
-                        if sent_msg.get("id"):
-                            supabase.table("signal_replies").update({
-                                "response_approved": True,
-                                "response_sent_at": datetime.now(UTC).isoformat(),
-                            }).eq("id", reply_db_id).execute()
+                    # Always auto-send the response
+                    sent_msg = await _gmail_send(token, signal.get("recipient_email", ""),
+                        f"Re: {signal.get('email_subject', '')}",
+                        response_body, thread_id)
+                    if sent_msg.get("id"):
+                        supabase.table("signal_replies").update({
+                            "response_approved": True,
+                            "response_sent_at": datetime.now(UTC).isoformat(),
+                        }).eq("id", reply_db_id).execute()
                 except Exception as e:
                     print(f"Auto-response draft error: {e}")
 
