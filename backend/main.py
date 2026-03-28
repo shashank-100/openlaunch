@@ -721,7 +721,7 @@ EMAIL RULES:
 - Then mention a specific signal you found (funding, hiring, expansion, etc.)
 - Connect it to this pain point: {icp_pain}
 - Keep it under 5 lines total (not counting greeting)
-- End with this CTA: {cta_style}{f' Include this booking link naturally: {calendly_link}' if calendly_link else ''}
+- End with ONE of these CTA styles (pick the one that fits best): {cta_style}{f' Include this booking link naturally: {calendly_link}' if calendly_link else ''}
 - Use \\n\\n for paragraph breaks
 - Sign with [Your Name] placeholder
 
