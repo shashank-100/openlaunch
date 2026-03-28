@@ -684,7 +684,7 @@ Return ONLY JSON: {{"companies": [{{"company_name": "...", "domain": "...", "des
         return []
     return json.loads(m.group()).get("companies", [])
 
-async def _research_company(name: str, domain: str, pitch: str, tavily_key: str | None, openai_key: str) -> dict:
+async def _research_company(name: str, domain: str, pitch: str, tavily_key: str | None, openai_key: str, persona: dict = None) -> dict:
     import re
     search_ctx = ""
     if tavily_key:
@@ -698,13 +698,36 @@ async def _research_company(name: str, domain: str, pitch: str, tavily_key: str 
         except Exception as e:
             print(f"Research search error for {name}: {e}")
 
+    # Extract persona settings for email generation
+    tone = persona.get("tone", "Direct and casual") if persona else "Direct and casual"
+    never_say = persona.get("never_say", "") if persona else ""
+    example_email = persona.get("example_email", "") if persona else ""
+    cta_style = persona.get("cta_style", "Worth a quick chat?") if persona else "Worth a quick chat?"
+    calendly_link = persona.get("calendly_link", "") if persona else ""
+    icp_pain = persona.get("icp_pain", "") if persona else ""
+
     prompt = f"""B2B sales intelligence agent. You represent a company that sells: "{pitch}".
 Research {name} ({domain}) for buying signals in the last 90 days (funding, hiring, leadership, product, competitive).
-Find a specific prospect and draft a 4-line email pitching your product as the solution.
+Find a specific prospect and draft a SHORT email (4-5 lines MAX) pitching your product as the solution.
+
+WRITING STYLE:
+- Tone: {tone}
+- NEVER use these phrases: {never_say}
+- Follow this example style:
+{example_email}
+
+EMAIL RULES:
+- Start with a specific signal you found (funding, hiring, expansion, etc.)
+- Connect it to this pain point: {icp_pain}
+- Keep it under 5 lines total
+- End with this CTA: {cta_style}{f' Include this booking link naturally: {calendly_link}' if calendly_link else ''}
+- Use \\n\\n for paragraph breaks
+- Sign with [Your Name] placeholder
+
 {f"Web results:{chr(10)}{search_ctx}" if search_ctx else ""}
 Return ONLY JSON:
 {{"signal_type":"hiring|funding|leadership|product|competitive|general","signal_summary":"...","relevance_score":7,
-"prospect_name":"...","prospect_title":"...","prospect_email":"...","email_subject":"...","email_body":"Line1.\\n\\nLine2.\\n\\nLine3.\\n\\nLine4.",
+"prospect_name":"...","prospect_title":"...","prospect_email":"...","email_subject":"...","email_body":"Line1.\\n\\nLine2.\\n\\nLine3.\\n\\n[Your Name]",
 "source_url":"...","should_contact":true,"priority":"high|medium|low"}}"""
 
     async with httpx.AsyncClient(timeout=45) as c:
@@ -757,7 +780,7 @@ async def run_scan():
 
     for company in companies[:10]:
         try:
-            result = await _research_company(company["company_name"], company.get("domain", ""), pitch, tavily_key, openai_key)
+            result = await _research_company(company["company_name"], company.get("domain", ""), pitch, tavily_key, openai_key, persona)
             if not result.get("should_contact"):
                 continue
 
