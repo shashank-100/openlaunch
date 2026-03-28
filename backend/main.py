@@ -717,9 +717,10 @@ WRITING STYLE:
 {example_email}
 
 EMAIL RULES:
-- Start with a specific signal you found (funding, hiring, expansion, etc.)
+- Start with "Hi [FirstName]," greeting using prospect's first name
+- Then mention a specific signal you found (funding, hiring, expansion, etc.)
 - Connect it to this pain point: {icp_pain}
-- Keep it under 5 lines total
+- Keep it under 5 lines total (not counting greeting)
 - End with this CTA: {cta_style}{f' Include this booking link naturally: {calendly_link}' if calendly_link else ''}
 - Use \\n\\n for paragraph breaks
 - Sign with [Your Name] placeholder
@@ -727,7 +728,7 @@ EMAIL RULES:
 {f"Web results:{chr(10)}{search_ctx}" if search_ctx else ""}
 Return ONLY JSON:
 {{"signal_type":"hiring|funding|leadership|product|competitive|general","signal_summary":"...","relevance_score":7,
-"prospect_name":"...","prospect_title":"...","prospect_email":"...","email_subject":"...","email_body":"Line1.\\n\\nLine2.\\n\\nLine3.\\n\\n[Your Name]",
+"prospect_name":"...","prospect_title":"...","prospect_email":"...","email_subject":"...","email_body":"Hi [FirstName],\\n\\nLine1.\\n\\nLine2.\\n\\nLine3.\\n\\n[Your Name]",
 "source_url":"...","should_contact":true,"priority":"high|medium|low"}}"""
 
     async with httpx.AsyncClient(timeout=45) as c:
@@ -791,8 +792,15 @@ async def run_scan():
             if not prospect_email or prospect_email.count("@") != 1 or "." not in prospect_email.split("@")[-1] or " " in prospect_email:
                 prospect_email = ""
 
-            # Replace GPT placeholder with real sender name
+            # Replace GPT placeholders with real names
             email_body = result.get("email_body", "")
+            prospect_name = result.get("prospect_name", "")
+
+            # Extract first name from prospect name (e.g., "Jonathan Smith" -> "Jonathan")
+            first_name = prospect_name.split()[0] if prospect_name else "there"
+
+            # Replace placeholders
+            email_body = email_body.replace("[FirstName]", first_name).replace("[firstname]", first_name)
             if sender_name:
                 email_body = email_body.replace("[Your Name]", sender_name).replace("[your name]", sender_name)
 
