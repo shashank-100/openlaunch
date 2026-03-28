@@ -305,7 +305,7 @@ export default function App() {
                   <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                     {isSig ? (
                       <>
-                        <Badge label={(item.signal_type || 'signal').replace('_', ' ')} bg={sc![0]} color={sc![1]} />
+                        <Badge label={(item.signal_type?.split('|')[0] || 'signal').replace('_', ' ')} bg={sc![0]} color={sc![1]} />
                         <Badge label={`${item.relevance_score}/10`} bg="#f4f4f5" color="#71717a" />
                         {!item.recipient_email && <Badge label="No email" bg="#fef2f2" color="#dc2626" />}
                       </>

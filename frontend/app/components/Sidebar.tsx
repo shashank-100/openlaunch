@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 const NAV = [
   { label: 'Inbox',   href: '/dashboard', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
   { label: 'Sent',    href: '/dashboard', icon: 'm22 2-7 20-4-9-9-4 20-7Zm0 0-9 9' },
@@ -8,8 +10,7 @@ const NAV = [
 ];
 
 const BOTTOM_NAV = [
-  { label: 'Analytics', href: '/analytics', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
-  { label: 'Settings',  href: '/settings',  icon: 'M12 2v2m0 16v2M2 12h2m16 0h2m-3.05-6.95-1.41 1.41M7.46 16.54l-1.41 1.41M17 17l1.41 1.41M7.46 7.46 6.05 6.05' },
+  { label: 'Settings', href: '/settings', icon: 'M12 2v2m0 16v2M2 12h2m16 0h2m-3.05-6.95-1.41 1.41M7.46 16.54l-1.41 1.41M17 17l1.41 1.41M7.46 7.46 6.05 6.05' },
 ];
 
 interface Props {
@@ -17,10 +18,9 @@ interface Props {
   activeSection?: string;
   counts?: Record<string, number>;
   settingsActive?: boolean;
-  analyticsActive?: boolean;
 }
 
-export default function Sidebar({ onNav, activeSection, counts = {}, settingsActive, analyticsActive }: Props) {
+export default function Sidebar({ onNav, activeSection, counts = {}, settingsActive }: Props) {
   return (
     <aside style={{ width: 210, background: '#18181b', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
 
@@ -72,9 +72,9 @@ export default function Sidebar({ onNav, activeSection, counts = {}, settingsAct
       {/* Bottom nav */}
       <div style={{ padding: '10px 8px 18px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: 1 }}>
         {BOTTOM_NAV.map(({ label, href, icon }) => {
-          const active = (label === 'Settings' && settingsActive) || (label === 'Analytics' && analyticsActive);
+          const active = label === 'Settings' && settingsActive;
           return (
-            <a key={label} href={href} style={{
+            <Link key={label} href={href} style={{
               display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8,
               background: active ? 'rgba(255,255,255,0.09)' : 'transparent',
               color: active ? '#fff' : 'rgba(255,255,255,0.38)',
@@ -84,7 +84,7 @@ export default function Sidebar({ onNav, activeSection, counts = {}, settingsAct
                 <path d={icon}/>
               </svg>
               {label}
-            </a>
+            </Link>
           );
         })}
       </div>
