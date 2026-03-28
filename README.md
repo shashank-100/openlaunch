@@ -1,4 +1,4 @@
-# GEODO INTAKE — Product-Led B2B Lead Discovery
+# INTAKE — Product-Led B2B Lead Discovery
 
 **Powered by OpenClaw**
 

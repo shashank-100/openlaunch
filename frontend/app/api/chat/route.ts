@@ -34,7 +34,7 @@ ${pendingList || 'None'}
 
   const result = streamText({
     model: openai('gpt-5-mini'),
-    system: `You are an AI sales assistant for INTAKE by Geodo — an autonomous outbound sales system.
+    system: `You are an AI sales assistant for INTAKE — an autonomous outbound sales system.
 
 You help the user:
 - Understand signals found by the scanner

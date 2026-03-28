@@ -261,23 +261,9 @@ async def send_outreach(body: OutreachSend):
     if not access_token:
         raise HTTPException(status_code=400, detail="Gmail token refresh failed.")
 
-    # Build RFC 2822 email and base64 encode it
-    import base64
-    from email.mime.text import MIMEText
-    msg = MIMEText(body.body)
-    msg["To"] = body.to
-    msg["Subject"] = body.subject
-    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
-
-    # Send via Gmail API
-    async with httpx.AsyncClient() as client:
-        res = await client.post(
-            "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-            headers={"Authorization": f"Bearer {access_token}"},
-            json={"raw": raw},
-        )
-    if res.status_code not in (200, 201):
-        raise HTTPException(status_code=500, detail=f"Gmail send failed: {res.text}")
+    result = await _gmail_send(access_token, body.to, body.subject, body.body)
+    if not result.get("id"):
+        raise HTTPException(status_code=500, detail="Gmail send failed")
 
     supabase.table("signals").update({"is_new": False}).eq("id", body.signalId).execute()
     supabase.table("outreach").insert({"signal_id": body.signalId, "to_email": body.to, "subject": body.subject, "body": body.body}).execute()
@@ -441,24 +427,9 @@ async def send_email_followup(followup_id: str):
 
     recipient = thread["participants"][0]["email"]
 
-    # Build email
-    import base64
-    from email.mime.text import MIMEText
-    msg = MIMEText(followup["body"])
-    msg["To"] = recipient
-    msg["Subject"] = followup["subject"]
-    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
-
-    # Send via Gmail API
-    async with httpx.AsyncClient() as client:
-        res = await client.post(
-            "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-            headers={"Authorization": f"Bearer {access_token}"},
-            json={"raw": raw},
-        )
-
-    if res.status_code not in (200, 201):
-        raise HTTPException(status_code=500, detail=f"Gmail send failed: {res.text}")
+    result = await _gmail_send(access_token, recipient, followup["subject"], followup["body"])
+    if not result.get("id"):
+        raise HTTPException(status_code=500, detail="Gmail send failed")
 
     # Update follow-up status
     supabase.table("email_followups").update({
@@ -507,76 +478,6 @@ def get_email_stats():
 
 # ── ANALYTICS ─────────────────────────────────────────────────────────────────
 
-@app.get("/api/analytics")
-async def get_analytics():
-    from datetime import timedelta
-    now = datetime.now(UTC)
-    thirty_days_ago = (now - timedelta(days=30)).isoformat()
-    seven_days_ago  = (now - timedelta(days=7)).isoformat()
-
-    # Signals found
-    signals_total = supabase.table("signal_outreach").select("id", count="exact").eq("user_id", DEMO_USER_ID).execute()
-    signals_week  = supabase.table("signal_outreach").select("id", count="exact").eq("user_id", DEMO_USER_ID).gte("created_at", seven_days_ago).execute()
-
-    # Emails sent
-    sent_total = supabase.table("signal_outreach").select("id", count="exact").eq("user_id", DEMO_USER_ID).eq("approval_status", "approved").execute()
-    sent_week  = supabase.table("signal_outreach").select("id", count="exact").eq("user_id", DEMO_USER_ID).eq("approval_status", "approved").gte("sent_at", seven_days_ago).execute()
-
-    # Replies
-    replies_total = supabase.table("signal_replies").select("id", count="exact").execute()
-    interested    = supabase.table("signal_replies").select("id", count="exact").in_("reply_intent", ["interested","meeting_request"]).execute()
-    meetings      = supabase.table("meeting_bookings").select("id", count="exact").eq("user_id", DEMO_USER_ID).execute()
-
-    # Follow-ups
-    followups_sent = supabase.table("follow_up_queue").select("id", count="exact").eq("user_id", DEMO_USER_ID).eq("status", "sent").execute()
-
-    # Reply rate
-    emails_sent_n = sent_total.count or 0
-    replies_n     = replies_total.count or 0
-    reply_rate    = round((replies_n / emails_sent_n * 100), 1) if emails_sent_n > 0 else 0
-
-    # Meeting rate
-    meeting_rate = round(((meetings.count or 0) / emails_sent_n * 100), 1) if emails_sent_n > 0 else 0
-
-    # Top signals by type
-    all_signals = supabase.table("signal_outreach").select("signal_type").eq("user_id", DEMO_USER_ID).execute()
-    signal_types: dict = {}
-    for s in (all_signals.data or []):
-        t = s.get("signal_type", "general")
-        signal_types[t] = signal_types.get(t, 0) + 1
-
-    # Recent activity (last 7 days per day)
-    daily = supabase.table("signal_outreach").select("created_at,approval_status,sent_at").eq("user_id", DEMO_USER_ID).gte("created_at", seven_days_ago).execute()
-    daily_map: dict = {}
-    for row in (daily.data or []):
-        day = row["created_at"][:10]
-        if day not in daily_map:
-            daily_map[day] = {"date": day, "signals": 0, "sent": 0}
-        daily_map[day]["signals"] += 1
-        if row.get("approval_status") == "approved":
-            daily_map[day]["sent"] += 1
-    activity = sorted(daily_map.values(), key=lambda x: x["date"])
-
-    # Best performing signals
-    best = supabase.table("signal_outreach").select("company_name,signal_type,relevance_score,sent_at").eq("user_id", DEMO_USER_ID).eq("approval_status","approved").order("relevance_score", desc=True).limit(5).execute()
-
-    return {
-        "overview": {
-            "signals_total":    signals_total.count or 0,
-            "signals_this_week": signals_week.count or 0,
-            "emails_sent_total": emails_sent_n,
-            "emails_sent_week":  sent_week.count or 0,
-            "replies_total":     replies_n,
-            "interested_replies": interested.count or 0,
-            "meetings_booked":   meetings.count or 0,
-            "follow_ups_sent":   followups_sent.count or 0,
-            "reply_rate":        reply_rate,
-            "meeting_rate":      meeting_rate,
-        },
-        "signal_types": signal_types,
-        "activity":     activity,
-        "best_signals": best.data or [],
-    }
 
 # ── AUTO-SEND TOGGLE ──────────────────────────────────────────────────────────
 
@@ -659,23 +560,11 @@ async def approve_signal(signal_id: str):
     if not access_token:
         raise HTTPException(status_code=400, detail="Gmail token refresh failed")
 
-    import base64
-    from email.mime.text import MIMEText
-    msg = MIMEText(signal["email_body"])
-    msg["To"] = signal["recipient_email"]
-    msg["Subject"] = signal["email_subject"]
-    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+    gmail_data = await _gmail_send(access_token, signal["recipient_email"],
+        signal["email_subject"], signal["email_body"])
+    if not gmail_data.get("id"):
+        raise HTTPException(status_code=500, detail="Gmail send failed")
 
-    async with httpx.AsyncClient() as client:
-        gmail_res = await client.post(
-            "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-            headers={"Authorization": f"Bearer {access_token}"},
-            json={"raw": raw},
-        )
-    if gmail_res.status_code not in (200, 201):
-        raise HTTPException(status_code=500, detail=f"Gmail send failed: {gmail_res.text}")
-
-    gmail_data = gmail_res.json()
     supabase.table("signal_outreach").update({
         "approval_status": "approved",
         "sent_at": datetime.now(UTC).isoformat(),
@@ -683,7 +572,6 @@ async def approve_signal(signal_id: str):
         "gmail_thread_id": gmail_data.get("threadId"),
     }).eq("id", signal_id).execute()
 
-    # Schedule follow-ups now that email is sent
     if signal.get("recipient_email"):
         _schedule_follow_ups(signal_id, signal["recipient_email"], signal.get("email_subject", ""))
 
@@ -733,8 +621,24 @@ async def _gmail_token() -> str | None:
 async def _gmail_send(token: str, to: str, subject: str, body: str, thread_id: str | None = None) -> dict:
     import base64
     from email.mime.text import MIMEText
+
+    # Get sender email from Gmail profile
+    sender_from = "me"
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            profile = await c.get("https://gmail.googleapis.com/gmail/v1/users/me/profile",
+                headers={"Authorization": f"Bearer {token}"})
+        if profile.status_code == 200:
+            gmail_address = profile.json().get("emailAddress", "")
+            p_res = supabase.table("personas").select("name").eq("user_id", DEMO_USER_ID).limit(1).execute()
+            sender_name = (p_res.data[0].get("name") or "") if p_res.data else ""
+            sender_from = f"{sender_name} <{gmail_address}>" if sender_name else gmail_address
+    except:
+        pass
+
     msg = MIMEText(body)
     msg["To"] = to
+    msg["From"] = sender_from
     msg["Subject"] = subject
     payload: dict = {"raw": base64.urlsafe_b64encode(msg.as_bytes()).decode()}
     if thread_id:

@@ -39,7 +39,7 @@ curl -s "https://backend-production-d5926.up.railway.app/api/signal-outreach?sta
 
 **Report ONLY if:** > 20 pending signals (approvals being ignored)
 
-Message: `⚠️ Geodo: [N] signals waiting for approval`
+Message: `⚠️ INTAKE: [N] signals waiting for approval`
 
 **Update:** `signals` timestamp in state file
 
@@ -53,7 +53,7 @@ curl -s "https://backend-production-d5926.up.railway.app/api/follow-ups/due"
 
 **Report ONLY if:** > 10 follow-ups due (follow-up cron may be stuck)
 
-Message: `⚠️ Geodo: [N] follow-ups overdue — check geodo-follow-ups cron`
+Message: `⚠️ INTAKE: [N] follow-ups overdue — check geodo-follow-ups cron`
 
 **Update:** `followups` timestamp in state file
 
@@ -67,7 +67,7 @@ openclaw cron list
 
 **Report ONLY if:** any of `geodo-signal-scan`, `geodo-follow-ups`, `geodo-inbox` shows `error` status
 
-Message: `⚠️ Geodo cron error: [cron-name] — check logs`
+Message: `⚠️ INTAKE cron error: [cron-name] — check logs`
 
 **Update:** `crons` timestamp in state file
 

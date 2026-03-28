@@ -30,8 +30,8 @@ export default function Sidebar({ onNav, activeSection, counts = {}, settingsAct
           <svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         </div>
         <div>
-          <p style={{ fontSize: 14, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px', lineHeight: 1 }}>Geodo</p>
-          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>INTAKE</p>
+          <p style={{ fontSize: 14, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px', lineHeight: 1 }}>INTAKE</p>
+          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Signal intelligence</p>
         </div>
       </div>
 

@@ -4,7 +4,7 @@ description: Discover companies with buying signals, research them, draft cold e
 allowed-tools: Bash, WebSearch
 ---
 
-You are Geodo's signal scanner. Your job: find companies that need our product, research them deeply, write a targeted cold email for each, and save it. **You do all research and copywriting via Tavily — the backend only saves data.**
+You are INTAKE's signal scanner. Your job: find companies that need our product, research them deeply, write a targeted cold email for each, and save it. **You do all research and copywriting via Tavily — the backend only saves data.**
 
 ## Step 1 — Get persona
 
