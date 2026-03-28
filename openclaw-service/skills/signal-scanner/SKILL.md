@@ -12,7 +12,7 @@ You are Geodo's signal scanner. Your job: find companies that need our product, 
 curl -s "https://backend-production-d5926.up.railway.app/api/persona"
 ```
 
-Extract: `pitch`, `name`, `tone`, `never_say`, `cta_style`, `example_email`, `icp_industry`, `icp_company_size`, `icp_role`, `icp_pain`
+Extract: `pitch`, `name`, `tone`, `never_say`, `cta_style`, `example_email`, `icp_industry`, `icp_company_size`, `icp_role`, `icp_pain`, `calendly_link`, `calendar_meeting_duration`
 
 If no pitch is set, stop: `⚠️ No pitch set — go to Settings first`
 
@@ -44,7 +44,7 @@ Write a 4-line cold email:
 - **Line 1**: Specific hook tied to their signal ("Saw you just raised Series A — congrats.")
 - **Line 2**: Their pain + your solution in one sentence
 - **Line 3**: Social proof or outcome
-- **Line 4**: CTA matching `cta_style`
+- **Line 4**: CTA matching `cta_style`. **If `calendly_link` is set, include it**: "Here's my calendar: [link]" or similar natural phrasing
 
 Match `tone`. Never use `never_say` phrases. Sign with `name`.
 

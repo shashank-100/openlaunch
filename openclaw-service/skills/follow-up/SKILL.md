@@ -24,10 +24,11 @@ For each follow-up in the list, write a personalized email using this context:
 - `signal.recipient_name` — who you're writing to
 - `persona.pitch`, `persona.tone`, `persona.never_say` — your voice
 - `persona.example_email` — style reference
+- `persona.calendly_link` — calendar booking link (if set)
 
 Rules:
-- Follow-up #1 (Day 3): New angle on the original signal. Short. 2-3 lines.
-- Follow-up #2 (Day 7): Add a specific insight or stat relevant to their situation. 2-3 lines.
+- Follow-up #1 (Day 3): New angle on the original signal. Short. 2-3 lines. **If `calendly_link` is set, include it naturally.**
+- Follow-up #2 (Day 7): Add a specific insight or stat relevant to their situation. 2-3 lines. **Include `calendly_link` if set.**
 - Follow-up #3 (Day 14): Breakup email. One line. Low pressure. Give them an easy out.
 - Never say anything from `never_say`
 - Never repeat the same angle as the previous follow-up

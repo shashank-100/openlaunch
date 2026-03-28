@@ -19,25 +19,14 @@ export async function POST(req: Request) {
   // Fetch live context from backend
   let context = '';
   try {
-    const [signalsRes, analyticsRes] = await Promise.all([
-      fetch(`${BACKEND}/api/signal-outreach?status=pending&limit=5`),
-      fetch(`${BACKEND}/api/analytics`),
-    ]);
-    const [signals, analytics] = await Promise.all([signalsRes.json(), analyticsRes.json()]);
+    const signalsRes = await fetch(`${BACKEND}/api/signal-outreach?status=pending&limit=5`);
+    const signals = await signalsRes.json();
 
     const pendingList = (signals.signals || [])
       .map((s: any) => `- ${s.company_name} (${s.signal_type}, ${s.relevance_score}/10): ${s.signal_summary}`)
       .join('\n');
 
-    const o = analytics.overview || {};
     context = `
-LIVE SYSTEM STATE:
-- Signals found total: ${o.signals_total}
-- Emails sent: ${o.emails_sent_total}
-- Reply rate: ${o.reply_rate}%
-- Meetings booked: ${o.meetings_booked}
-- Interested replies: ${o.interested_replies}
-
 PENDING SIGNALS (awaiting approval):
 ${pendingList || 'None'}
 `;
@@ -45,7 +34,7 @@ ${pendingList || 'None'}
 
   const result = streamText({
     model: openai('gpt-5-mini'),
-    system: `You are an AI sales assistant for Geodo — an autonomous outbound sales system.
+    system: `You are an AI sales assistant for INTAKE by Geodo — an autonomous outbound sales system.
 
 You help the user:
 - Understand signals found by the scanner

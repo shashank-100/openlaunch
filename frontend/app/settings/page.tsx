@@ -237,14 +237,14 @@ function SettingsContent() {
                 </button>
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>Calendly Link</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>Calendar Booking Link</label>
                 <input
                   value={calendlyLink}
                   onChange={e => setCalendlyLink(e.target.value)}
-                  placeholder="https://calendly.com/your-link"
+                  placeholder="https://calendly.com/your-link or https://cal.com/your-link"
                   style={{ width: '100%', background: '#f7f7f6', border: '1px solid #ececea', borderRadius: 8, padding: '8px 12px', color: '#111', fontSize: 13.5, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
                 />
-                <p style={{ fontSize: 11.5, color: '#aaa', marginTop: 6 }}>Used when someone replies with meeting interest</p>
+                <p style={{ fontSize: 11.5, color: '#aaa', marginTop: 6 }}>Included in outreach emails and when prospects reply with meeting interest</p>
               </div>
               <button onClick={saveSettings} disabled={savingSettings} style={{
                 padding: '12px', background: '#6366f1', color: '#fff',

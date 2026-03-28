@@ -1,17 +1,17 @@
-# GEODO — Product-Led B2B Lead Discovery
+# GEODO INTAKE — Product-Led B2B Lead Discovery
 
 **Powered by OpenClaw**
 
-GEODO is an autonomous revenue intelligence engine that discovers high-intent leads based on your product pitch. It monitors the live web for buying signals (hiring, funding, launches) and maps them directly to why a company needs *your* specific solution.
+INTAKE is an autonomous revenue intelligence engine that discovers high-intent leads based on your product pitch. It monitors the live web for buying signals (hiring, funding, launches) and maps them directly to why a company needs *your* specific solution.
 
 ---
 
-## 🚀 The GEODO Workflow
+## 🚀 The INTAKE Workflow
 
-GEODO eliminates manual prospecting by automating the entire research-to-outreach lifecycle:
+INTAKE eliminates manual prospecting by automating the entire research-to-outreach lifecycle:
 
-1. **🎯 Define Your Pitch:** Tell GEODO what you sell (e.g., "Data integration tools for modern data teams").
-2. **🧠 Autonomous Discovery:** GEODO infers your Ideal Customer Profile (ICP) and uses Tavily to find matching companies.
+1. **🎯 Define Your Pitch:** Tell INTAKE what you sell (e.g., "Data integration tools for modern data teams").
+2. **🧠 Autonomous Discovery:** INTAKE infers your Ideal Customer Profile (ICP) and uses Tavily to find matching companies.
 3. **📡 Real-time Monitoring:** Deploys OpenClaw agents to monitor your target accounts across 10+ live web sources.
 4. **💡 Product-Led Insights:** Every signal detected (e.g., hiring 5 data engineers) is automatically mapped to your product's value prop.
 5. **🤖 Automated Outreach:** Generates personalized outreach and delivers it via WhatsApp, Telegram, or Email.

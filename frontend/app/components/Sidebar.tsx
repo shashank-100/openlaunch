@@ -31,7 +31,7 @@ export default function Sidebar({ onNav, activeSection, counts = {}, settingsAct
         </div>
         <div>
           <p style={{ fontSize: 14, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px', lineHeight: 1 }}>Geodo</p>
-          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Signal outreach</p>
+          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>INTAKE</p>
         </div>
       </div>
 
