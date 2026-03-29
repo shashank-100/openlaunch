@@ -15,7 +15,7 @@ Read `/Users/shashank/openlaunch/geodo/openclaw-service/heartbeat-state.json`. R
 2. Calculate which check is most overdue
 3. Run that check
 4. Update timestamp in `/Users/shashank/openlaunch/geodo/openclaw-service/heartbeat-state.json`
-5. Report via Telegram if actionable, otherwise `HEARTBEAT_OK`
+5. If actionable issue found, output the warning message. Otherwise output `HEARTBEAT_OK` (do NOT try to send Telegram messages yourself, just output text)
 
 ---
 
@@ -34,10 +34,10 @@ curl -s https://backend-production-d5926.up.railway.app/health
 ## Pending Signals Check
 
 ```bash
-curl -s "https://backend-production-d5926.up.railway.app/api/signal-outreach?status=pending&limit=100"
+curl -s "https://backend-production-d5926.up.railway.app/api/signal-outreach?status=pending&limit=500"
 ```
 
-**Report ONLY if:** > 20 pending signals (approvals being ignored)
+**Report ONLY if:** > 300 pending signals (approvals being ignored)
 
 Message: `⚠️ INTAKE: [N] signals waiting for approval`
 
@@ -70,6 +70,8 @@ openclaw cron list
 Message: `⚠️ INTAKE cron error: [cron-name] — check logs`
 
 **Update:** `crons` timestamp in state file
+
+---
 
 ---
 
