@@ -10,6 +10,7 @@ const NAV = [
 ];
 
 const BOTTOM_NAV = [
+  { label: 'Experiments', href: '/experiments', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9 2 2 4-4' },
   { label: 'Settings', href: '/settings', icon: 'M12 2v2m0 16v2M2 12h2m16 0h2m-3.05-6.95-1.41 1.41M7.46 16.54l-1.41 1.41M17 17l1.41 1.41M7.46 7.46 6.05 6.05' },
 ];
 
@@ -18,9 +19,10 @@ interface Props {
   activeSection?: string;
   counts?: Record<string, number>;
   settingsActive?: boolean;
+  experimentsActive?: boolean;
 }
 
-export default function Sidebar({ onNav, activeSection, counts = {}, settingsActive }: Props) {
+export default function Sidebar({ onNav, activeSection, counts = {}, settingsActive, experimentsActive }: Props) {
   return (
     <aside style={{ width: 210, background: '#18181b', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
 
@@ -72,7 +74,7 @@ export default function Sidebar({ onNav, activeSection, counts = {}, settingsAct
       {/* Bottom nav */}
       <div style={{ padding: '10px 8px 18px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: 1 }}>
         {BOTTOM_NAV.map(({ label, href, icon }) => {
-          const active = label === 'Settings' && settingsActive;
+          const active = (label === 'Settings' && settingsActive) || (label === 'Experiments' && experimentsActive);
           return (
             <Link key={label} href={href} style={{
               display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8,

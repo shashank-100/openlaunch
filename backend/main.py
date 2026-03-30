@@ -1301,6 +1301,129 @@ async def inbox_classify(body: dict):
     return {"success": True}
 
 
+# ── EXPERIMENTS & AUTORESEARCH ENDPOINTS ──────────────────────────────────────
+
+@app.get("/api/experiments/stats")
+async def get_experiment_stats():
+    """Get reply rate statistics for autoresearch optimization"""
+    # Get all replies
+    replies_res = supabase.table("signal_replies").select("*").execute()
+    replies = replies_res.data or []
+
+    total_replies = len(replies)
+    if total_replies == 0:
+        return {
+            "total_replies": 0,
+            "positive_replies": 0,
+            "positive_reply_rate": 0.0,
+            "by_intent": {}
+        }
+
+    # Count by intent
+    intent_counts = {}
+    positive_intents = ["interested", "meeting_request"]
+    positive_replies = 0
+
+    for reply in replies:
+        intent = reply.get("reply_intent", "unknown")
+        intent_counts[intent] = intent_counts.get(intent, 0) + 1
+        if intent in positive_intents:
+            positive_replies += 1
+
+    positive_reply_rate = (positive_replies / total_replies * 100) if total_replies > 0 else 0.0
+
+    return {
+        "total_replies": total_replies,
+        "positive_replies": positive_replies,
+        "positive_reply_rate": round(positive_reply_rate, 2),
+        "by_intent": intent_counts,
+        "last_updated": datetime.now(UTC).isoformat()
+    }
+
+@app.get("/api/experiments/history")
+async def get_experiment_history():
+    """Read autoresearch.jsonl experiment log"""
+    import os
+    import json as json_lib
+
+    log_path = "/Users/shashank/openlaunch/geodo/autoresearch.jsonl"
+
+    if not os.path.exists(log_path):
+        return {"experiments": [], "baseline": None}
+
+    experiments = []
+    baseline = None
+
+    try:
+        with open(log_path, 'r') as f:
+            for line in f:
+                if line.strip():
+                    entry = json_lib.loads(line)
+                    if entry.get("type") == "experiment":
+                        experiments.append(entry)
+                        if entry.get("is_baseline"):
+                            baseline = entry
+    except:
+        pass
+
+    return {
+        "experiments": experiments,
+        "baseline": baseline,
+        "count": len(experiments)
+    }
+
+@app.get("/api/experiments/ideas")
+async def get_experiment_ideas():
+    """Read autoresearch.ideas.md backlog"""
+    import os
+
+    ideas_path = "/Users/shashank/openlaunch/geodo/autoresearch.ideas.md"
+
+    if not os.path.exists(ideas_path):
+        return {"ideas": "", "has_file": False}
+
+    try:
+        with open(ideas_path, 'r') as f:
+            content = f.read()
+        return {"ideas": content, "has_file": True}
+    except:
+        return {"ideas": "", "has_file": False}
+
+@app.post("/api/experiments/run-benchmark")
+async def run_benchmark():
+    """Manually trigger autoresearch benchmark"""
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            ["bash", "autoresearch.sh"],
+            cwd="/Users/shashank/openlaunch/geodo",
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        # Parse METRIC lines
+        metrics = {}
+        for line in result.stdout.split('\n'):
+            if line.startswith('METRIC '):
+                parts = line.replace('METRIC ', '').split('=')
+                if len(parts) == 2:
+                    metrics[parts[0]] = float(parts[1])
+
+        return {
+            "success": True,
+            "metrics": metrics,
+            "output": result.stdout,
+            "timestamp": datetime.now(UTC).isoformat()
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8000")))

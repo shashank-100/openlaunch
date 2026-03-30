@@ -40,7 +40,7 @@ ${pendingList || 'None'}
     system: `You are an AI sales assistant for INTAKE — an autonomous outbound sales system.
 
 You help the user take ACTION:
-- Approve and send emails
+- Approve and send emails (single or bulk)
 - Reject/skip signals
 - Trigger manual scans
 - Review and improve email drafts
@@ -49,7 +49,10 @@ You help the user take ACTION:
 
 ${context}
 
-When the user asks you to DO something (approve, send, skip, scan), tell them the action has been queued and provide instructions on how to execute it in the dashboard.
+BULK SENDING:
+When user asks to "send 5 emails" or "send the top X", use approve_bulk_emails with count=X.
+This will send emails to X different companies from the pending list (top signals by relevance).
+You don't need to call list_pending_signals first - the tool automatically uses the pending signals.
 
 Keep responses concise and actionable. You're a sales expert — be direct, specific, and helpful.`,
     messages,
@@ -83,6 +86,46 @@ Keep responses concise and actionable. You're a sales expert — be direct, spec
           } catch (e) {
             return `❌ Error sending email: ${String(e)}`;
           }
+        },
+      },
+      approve_bulk_emails: {
+        description: 'Approve and send multiple emails to different companies. Use when user wants to send X emails (e.g., "send 5 emails", "approve the top 3").',
+        inputSchema: z.object({
+          count: z.number().min(1).max(20).describe('Number of emails to send (1-20)'),
+        }) as any,
+        execute: async ({ count }: any) => {
+          // Get the first N pending signals
+          const signalsToSend = pendingSignals.slice(0, count);
+
+          if (signalsToSend.length === 0) {
+            return '❌ No pending signals available to send.';
+          }
+
+          let sent = 0;
+          let failed = 0;
+          const results: string[] = [];
+
+          for (const signal of signalsToSend) {
+            try {
+              const res = await fetch(`${BACKEND}/api/signal-outreach/${signal.id}/approve`, {
+                method: 'POST',
+              });
+              const data = await res.json();
+              if (data.success) {
+                sent++;
+                results.push(`✅ ${signal.company_name}`);
+              } else {
+                failed++;
+                results.push(`❌ ${signal.company_name}: ${data.detail || 'Failed'}`);
+              }
+            } catch (e) {
+              failed++;
+              results.push(`❌ ${signal.company_name}: ${String(e)}`);
+            }
+          }
+
+          const summary = `📧 **Sent ${sent}/${signalsToSend.length} emails**\n\n${results.join('\n')}\n\n${sent > 0 ? 'All sent emails are in your Sent folder with follow-ups scheduled.' : ''}`;
+          return summary;
         },
       },
       reject_signal: {
